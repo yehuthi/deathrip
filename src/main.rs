@@ -8,6 +8,14 @@ async fn main() {
 			clap::Arg::with_name("URL")
 				.required(true)
 				.help("URL to the image base (temporary, will be URL to the image page)."),
+		)
+		.arg(
+			clap::Arg::with_name("OUTPUT")
+				.short("o")
+				.long("output")
+				.required(true)
+				.takes_value(true)
+				.help("Output file name."),
 		);
 	let matches = app.get_matches();
 	let url = matches.value_of("URL").unwrap();
@@ -18,6 +26,6 @@ async fn main() {
 	deathrip::rip(&client, url.to_string())
 		.await
 		.unwrap()
-		.save_with_format("C:/delme/out.png", image::ImageFormat::Png)
+		.save(matches.value_of("OUTPUT").unwrap())
 		.unwrap();
 }
