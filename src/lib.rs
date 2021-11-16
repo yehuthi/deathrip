@@ -12,8 +12,8 @@ pub async fn determine_max_zoom(client: &Client, mut base: String) -> Result<u32
 		if response.status().is_success() {
 			level += 1;
 			let next_level = level + 1;
-			let next_level_str = next_level.to_string();
-			base.replace_range(z_index.., &next_level_str);
+			base.truncate(z_index);
+			itoa::fmt(&mut base, next_level).unwrap();
 		} else {
 			break;
 		}
