@@ -1,6 +1,9 @@
 [package]
 name = "deathrip"
+authors = ["Yehuthith <yehuthit@gmail.com>"]
+description = "Rips full-resolution images from the Dead Sea Scrolls digital library."
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+clap = "2.33"
