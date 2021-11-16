@@ -1,4 +1,5 @@
-fn main() {
+#[tokio::main]
+async fn main() {
 	let app = clap::App::new(env!("CARGO_PKG_NAME"))
 		.version(env!("CARGO_PKG_VERSION"))
 		.author(env!("CARGO_PKG_AUTHORS"))
@@ -11,4 +12,10 @@ fn main() {
 	let matches = app.get_matches();
 	let url = matches.value_of("URL").unwrap();
 	dbg!(url);
+
+	let client = reqwest::Client::new();
+	let zoom = deathrip::determine_max_zoom(&client, url.to_string())
+		.await
+		.unwrap();
+	println!("Zoom level: {}", zoom);
 }
