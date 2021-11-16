@@ -4,7 +4,7 @@ async fn determine_limit(
 	client: &Client,
 	mut base: String,
 	params: &str,
-) -> Result<u32, reqwest::Error> {
+) -> Result<usize, reqwest::Error> {
 	let mut level = 0;
 	base.reserve(10);
 	base.push_str(params);
@@ -25,7 +25,7 @@ async fn determine_limit(
 	Ok(level)
 }
 
-pub async fn determine_max_zoom(client: &Client, base: String) -> Result<u32, reqwest::Error> {
+pub async fn determine_max_zoom(client: &Client, base: String) -> Result<usize, reqwest::Error> {
 	determine_limit(client, base, "x0-y0-z1").await
 }
 
@@ -33,7 +33,7 @@ pub async fn determine_columns(
 	client: &Client,
 	base: String,
 	zoom: usize,
-) -> Result<u32, reqwest::Error> {
+) -> Result<usize, reqwest::Error> {
 	let params = format!("z{}-y0-x1", zoom);
 	determine_limit(client, base, &params).await
 }
@@ -42,7 +42,7 @@ pub async fn determine_rows(
 	client: &Client,
 	base: String,
 	zoom: usize,
-) -> Result<u32, reqwest::Error> {
+) -> Result<usize, reqwest::Error> {
 	let params = format!("z{}-x0-y1", zoom);
 	determine_limit(client, base, &params).await
 }
@@ -51,7 +51,7 @@ pub async fn determine_dimensions(
 	client: &Client,
 	base: String,
 	zoom: usize,
-) -> Result<(u32, u32), reqwest::Error> {
+) -> Result<(usize, usize), reqwest::Error> {
 	tokio::try_join!(
 		determine_columns(client, base.clone(), zoom),
 		determine_rows(client, base, zoom)
