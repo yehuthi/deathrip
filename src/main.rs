@@ -18,4 +18,8 @@ async fn main() {
 		.await
 		.unwrap();
 	println!("Zoom level: {}", zoom);
+	let dim = deathrip::determine_dimensions(&client, url.to_string(), zoom as usize)
+		.await
+		.unwrap();
+	println!("Columns: {}, Rows: {}", dim.0, dim.1);
 }
