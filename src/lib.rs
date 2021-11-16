@@ -35,7 +35,7 @@ pub async fn determine_columns(
 	zoom: usize,
 ) -> Result<usize, reqwest::Error> {
 	let params = format!("z{}-y0-x1", zoom);
-	determine_limit(client, base, &params).await
+	determine_limit(client, base, &params).await.map(|c| c + 1)
 }
 
 pub async fn determine_rows(
@@ -44,7 +44,7 @@ pub async fn determine_rows(
 	zoom: usize,
 ) -> Result<usize, reqwest::Error> {
 	let params = format!("z{}-x0-y1", zoom);
-	determine_limit(client, base, &params).await
+	determine_limit(client, base, &params).await.map(|r| r + 1)
 }
 
 pub async fn determine_dimensions(
