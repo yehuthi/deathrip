@@ -1,5 +1,6 @@
 #[tokio::main]
 async fn main() {
+	const DEFAULT_OUTPUT_FILE_NAME: &str = "dss_rip.png";
 	let app = clap::App::new(env!("CARGO_PKG_NAME"))
 		.version(env!("CARGO_PKG_VERSION"))
 		.author(env!("CARGO_PKG_AUTHORS"))
@@ -13,9 +14,9 @@ async fn main() {
 			clap::Arg::with_name("OUTPUT")
 				.short("o")
 				.long("output")
-				.required(true)
 				.takes_value(true)
-				.help("Output file name."),
+				.help("Output file name.")
+				.default_value(DEFAULT_OUTPUT_FILE_NAME),
 		);
 	let matches = app.get_matches();
 	let url = matches.value_of("URL").unwrap();
@@ -26,6 +27,10 @@ async fn main() {
 	deathrip::rip(&client, url.to_string())
 		.await
 		.unwrap()
-		.save(matches.value_of("OUTPUT").unwrap())
+		.save(
+			matches
+				.value_of("OUTPUT")
+				.unwrap_or(DEFAULT_OUTPUT_FILE_NAME),
+		)
 		.unwrap();
 }
