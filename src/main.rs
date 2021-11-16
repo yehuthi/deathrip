@@ -14,12 +14,10 @@ async fn main() {
 	dbg!(url);
 
 	let client = reqwest::Client::new();
-	let zoom = deathrip::determine_max_zoom(&client, url.to_string())
+
+	deathrip::rip(&client, url.to_string())
 		.await
+		.unwrap()
+		.save_with_format("C:/delme/out.png", image::ImageFormat::Png)
 		.unwrap();
-	println!("Zoom level: {}", zoom);
-	let dim = deathrip::determine_dimensions(&client, url.to_string(), zoom as usize)
-		.await
-		.unwrap();
-	println!("Columns: {}, Rows: {}", dim.0, dim.1);
 }
