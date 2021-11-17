@@ -1,3 +1,5 @@
+mod util;
+
 use std::{
 	fmt::{self, Display},
 	io::Cursor,
@@ -11,41 +13,7 @@ use image::{GenericImage, GenericImageView};
 use itertools::Itertools;
 use reqwest::Client;
 use tokio::sync::{Mutex, RwLock};
-
-/// A [`String`](String) buffer with a mutating tail.
-#[derive(Debug, Hash, Default, Clone, PartialEq, PartialOrd, Eq, Ord)]
-struct StringMutTail {
-	/// The [`String`](String) value.
-	url: String,
-	/// The index of the tail. Text after it is considered the tail.
-	tail_index: usize,
-}
-
-impl From<String> for StringMutTail {
-	fn from(mut base: String) -> Self {
-		let tail_index = base.len();
-		base.reserve(10);
-		Self {
-			url: base,
-			tail_index,
-		}
-	}
-}
-
-impl From<&str> for StringMutTail {
-	fn from(base: &str) -> Self {
-		Self::from(base.to_string())
-	}
-}
-
-impl StringMutTail {
-	/// Sets the [tail](StringMutTail::tail_index) to the given integer.
-	fn with_tail_int(&mut self, integer: impl itoa::Integer) -> &str {
-		self.url.truncate(self.tail_index);
-		itoa::fmt(&mut self.url, integer).unwrap();
-		&self.url
-	}
-}
+use util::StringMutTail;
 
 /// Determines the limit of an axis for the image.
 ///
