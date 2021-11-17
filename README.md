@@ -1,5 +1,12 @@
 # deathrip
 
+> The Dead Sea Scrolls are ancient Jewish and Hebrew religious manuscripts that were found in the Qumran Caves in the Judaean Desert, near Ein Feshkha on the northern shore of the Dead Sea in the West Bank; the last scrolls discovered were found in the Cave of Horror in Israel.
+> 
+> Created: Est. 408 BCE to 318 CE
+>
+> &horbar; [Wikipedia](https://en.wikipedia.org/wiki/Dead_Sea_Scrolls)
+
+
 A command-line tool to download full-resolution images from [The Dead Sea Scrolls Digital Library](https://www.deadseascrolls.org.il/).
 
 Accept the library's [terms of service](https://www.deadseascrolls.org.il/terms) before usage.
