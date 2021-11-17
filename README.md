@@ -9,7 +9,7 @@
 > &horbar; [Wikipedia](https://en.wikipedia.org/wiki/Dead_Sea_Scrolls)
 
 
-A command-line tool to download full-resolution images from [The Dead Sea Scrolls Digital Library](https://www.deadseascrolls.org.il/).
+A command-line tool to download full-resolution Dead Sea Scroll images by their ID or URL in [The Dead Sea Scrolls Digital Library](https://www.deadseascrolls.org.il/).
 
 Accept the library's [terms of service](https://www.deadseascrolls.org.il/terms) before usage.
 
