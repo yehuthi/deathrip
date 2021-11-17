@@ -7,9 +7,9 @@ async fn main() {
 		.author(env!("CARGO_PKG_AUTHORS"))
 		.about(env!("CARGO_PKG_DESCRIPTION"))
 		.arg(
-			clap::Arg::with_name("URL")
+			clap::Arg::with_name("IMAGE")
 				.required(true)
-				.help("URL to the image base (temporary, will be URL to the image page)."),
+				.help("URL to the image page, image base, or item ID."),
 		)
 		.arg(
 			clap::Arg::with_name("OUTPUT")
@@ -27,12 +27,46 @@ async fn main() {
 				}),
 		);
 	let matches = app.get_matches();
-	let url = matches.value_of("URL").unwrap();
 
 	let client = Arc::new(reqwest::Client::new());
-
 	let start = SystemTime::now();
-	let page = deathrip::Page::try_fetch(&client, url).await.unwrap();
+
+	let (url, out) = {
+		if let Ok(input) = deathrip::Input::try_from(matches.value_of("IMAGE").unwrap()) {
+			let normalized = match input {
+				deathrip::Input::BaseUrl(url) => Ok((url, None)),
+				deathrip::Input::PageUrl(url) => Err(url),
+				deathrip::Input::ItemId(id) => Err(format!(
+					"https://www.deadseascrolls.org.il/explore-the-archive/image/{}",
+					id
+				)),
+			};
+			match normalized {
+				Ok(base) => base,
+				Err(page_url) => {
+					let page = deathrip::Page::try_fetch(&client, &page_url).await.unwrap();
+					(page.base_url, Some(page.title))
+				}
+			}
+		} else {
+			eprintln!("Failed to determine the image type.");
+			std::process::exit(1);
+		}
+	};
+
+	let page = deathrip::Page {
+		title: out.unwrap_or_else(|| {
+			format!(
+				"{}_{}",
+				env!("CARGO_PKG_NAME"),
+				SystemTime::now()
+					.duration_since(SystemTime::UNIX_EPOCH)
+					.unwrap()
+					.as_millis()
+			)
+		}),
+		base_url: url,
+	};
 	deathrip::rip(client, &page.base_url, 8)
 		.await
 		.unwrap()

@@ -15,6 +15,51 @@ use reqwest::Client;
 use tokio::sync::{Mutex, RwLock};
 use util::StringMutTail;
 
+/// Input to the main operation, i.e. reference to the desired image.
+#[derive(Debug, Hash, Clone, PartialEq, PartialOrd, Eq, Ord)]
+pub enum Input {
+	/// The base URL of the image.
+	BaseUrl(String),
+	/// The page of the image.
+	PageUrl(String),
+	/// The item ID of the image.
+	ItemId(String),
+}
+
+impl AsRef<str> for Input {
+	fn as_ref(&self) -> &str {
+		match self {
+			Input::BaseUrl(s) => s.as_str(),
+			Input::PageUrl(s) => s.as_str(),
+			Input::ItemId(s) => s.as_str(),
+		}
+	}
+}
+
+impl Display for Input {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		f.write_str(self.as_ref())
+	}
+}
+
+/// Attempts to infer the type of input.
+///
+/// Currently always succeeds with [`Input::ItemId`](Input::ItemId) as fallback, but may change later.
+impl TryFrom<&str> for Input {
+	type Error = ();
+
+	fn try_from(value: &str) -> Result<Self, Self::Error> {
+		let value = value.to_owned();
+		Ok(if value.contains("ggpht.com") {
+			Self::BaseUrl(value)
+		} else if value.contains("deadseascrolls.org") {
+			Self::PageUrl(value)
+		} else {
+			Self::ItemId(value)
+		})
+	}
+}
+
 /// Determines the limit of an axis for the image.
 ///
 /// - The `base` parameter is the base URL of the image along with `=` and XYZ parameters (see section below), but with the
