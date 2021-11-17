@@ -99,7 +99,7 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 		matches
 			.value_of("OUTPUT")
 			.map_or_else(
-				|| Cow::Owned(format!("{}.png", page.title)),
+				|| Cow::Owned(format!("{}.{}", page.title, DEFAULT_EXTENSION)),
 				|out| Cow::Borrowed(out),
 			)
 			.as_ref(),
