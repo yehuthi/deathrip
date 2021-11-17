@@ -55,6 +55,9 @@ impl StringMutTail {
 ///
 /// ## Base URL
 ///
+/// The base URL for this function is not the same as the base for [`rip`](rip).
+/// This one requires partial parameterization.
+///
 /// An image base URL ends with `=` and then is appended with X, Y, and Z values in the format:
 /// `x<X>-y<Y>-z<Z>`. The order of the axes is insignificant.
 /// X and Y refer to position and Z refers to the resolution.
@@ -198,6 +201,10 @@ impl From<image::ImageError> for Error {
 	}
 }
 
+/// Rips an image from the given base URL.
+///
+/// `num_workers_half` corresponds to half of the amount of parallel workers that will be used (half
+/// because at most two operations will get this limit in parallel).
 pub async fn rip(
 	client: Arc<Client>,
 	base: &str,
