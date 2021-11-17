@@ -47,12 +47,30 @@ impl StringMutTail {
 	}
 }
 
+/// Determines the limit of an axis for the image.
+///
+/// - The `base` parameter is the base URL of the image along with XYZ parameters (see section below), but with the
+/// target axis parameter last and without a value (e.g. end with `x0-y0-z` to target the Z axis).
+/// - The `num_workers` is the amount of simultaneous requests that will be made.
+///
+/// ## Base URL
+///
+/// An image base URL ends with `=` and then is appended with X, Y, and Z values in the format:
+/// `x<X>-y<Y>-z<Z>`. The order of the axes is insignificant.
+/// X and Y refer to position and Z refers to the resolution.
+///
+/// This function will send HEAD requests, incrementing an axis determined by the base URL,
+/// and will return the highest value that succeeds.
 async fn determine_limit(
 	client: Arc<Client>,
 	base: &str,
 	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
+	// A variable dedicated for the result.
+	// It's a `Result` that will be the minimal value that succeeds or an error if we encounter an
+	// error (that isn't a client-error because we took the axis too far).
 	let min_failure = Arc::new(RwLock::new(Ok::<usize, reqwest::Error>(usize::MAX)));
+	// An atomic counter of the axis value. Threads read and increment it as they try higher axis values.
 	let i = Arc::new(AtomicUsize::new(1));
 
 	let workers = (0..num_workers).map(|_| {
@@ -97,6 +115,7 @@ async fn determine_limit(
 		.map(|l| l - 1)
 }
 
+/// Determines the max zoom level for the image at the base URL.
 pub async fn determine_max_zoom(
 	client: Arc<Client>,
 	base: &str,
@@ -105,6 +124,7 @@ pub async fn determine_max_zoom(
 	determine_limit(client, &format!("{}x0-y0-z", base), num_workers).await
 }
 
+/// Determines the count of columns i.e. the amount of cells going across the image.
 pub async fn determine_columns(
 	client: Arc<Client>,
 	base: &str,
@@ -117,6 +137,7 @@ pub async fn determine_columns(
 		.map(|c| c + 1)
 }
 
+/// Determines the count of rows i.e. the amount of cells going along the image.
 pub async fn determine_rows(
 	client: Arc<Client>,
 	base: &str,
@@ -129,6 +150,7 @@ pub async fn determine_rows(
 		.map(|c| c + 1)
 }
 
+/// Determines the [rows](determine_rows) and [columns](determine_columns) of the image (in-parallel).
 pub async fn determine_dimensions(
 	client: Arc<Client>,
 	base: &str,
@@ -141,10 +163,14 @@ pub async fn determine_dimensions(
 	)
 }
 
+/// An error when fetching or processing an image.
 #[derive(Debug)]
 pub enum Error {
+	/// Failure trying to fetch an image or metadata.
 	HttpError(reqwest::Error),
+	/// Failure trying to decode an image.
 	ImageError(image::ImageError),
+	/// Failure trying to determine the image's format.
 	ImageFormatGuessError(std::io::Error),
 }
 
