@@ -203,8 +203,8 @@ impl From<image::ImageError> for Error {
 
 /// Rips an image from the given base URL.
 ///
-/// `num_workers_half` corresponds to half of the amount of parallel workers that will be used (half
-/// because at most two operations will get this limit in parallel).
+/// `num_workers_half` corresponds to half of the amount of parallel connections that will be used to
+/// fetch metadata (half because at most two operations will get this limit in parallel).
 pub async fn rip(
 	client: Arc<Client>,
 	base: &str,
