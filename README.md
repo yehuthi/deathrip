@@ -1,6 +1,6 @@
 # deathrip [<img src="https://img.shields.io/crates/v/deathrip" align="right" />](https://crates.io/crates/deathrip)
 
-<img src="doc/b367578.png" height=300 align=right />
+<a href="https://www.deadseascrolls.org.il/explore-the-archive/search#q=''+AND+script_type:'Paleo-Hebrew'"><img src="doc/b367578.png" height=300 align=right /></a>
 
 > The Dead Sea Scrolls are ancient Jewish and Hebrew religious manuscripts that were found in the Qumran Caves in the Judaean Desert, near Ein Feshkha on the northern shore of the Dead Sea in the West Bank; the last scrolls discovered were found in the Cave of Horror in Israel.
 > 
