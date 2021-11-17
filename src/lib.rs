@@ -12,33 +12,37 @@ use itertools::Itertools;
 use reqwest::Client;
 use tokio::sync::{Mutex, RwLock};
 
+/// A [`String`](String) buffer with a mutating tail.
 #[derive(Debug, Hash, Default, Clone, PartialEq, PartialOrd, Eq, Ord)]
-struct BaseBuffer {
+struct StringMutTail {
+	/// The [`String`](String) value.
 	url: String,
-	axis_index: usize,
+	/// The index of the tail. Text after it is considered the tail.
+	tail_index: usize,
 }
 
-impl From<String> for BaseBuffer {
+impl From<String> for StringMutTail {
 	fn from(mut base: String) -> Self {
-		let axis_index = base.len();
+		let tail_index = base.len();
 		base.reserve(10);
 		Self {
 			url: base,
-			axis_index,
+			tail_index,
 		}
 	}
 }
 
-impl From<&str> for BaseBuffer {
+impl From<&str> for StringMutTail {
 	fn from(base: &str) -> Self {
 		Self::from(base.to_string())
 	}
 }
 
-impl BaseBuffer {
-	fn with_param(&mut self, value: usize) -> &str {
-		self.url.truncate(self.axis_index);
-		itoa::fmt(&mut self.url, value).unwrap();
+impl StringMutTail {
+	/// Sets the [tail](StringMutTail::tail_index) to the given integer.
+	fn with_tail_int(&mut self, integer: impl itoa::Integer) -> &str {
+		self.url.truncate(self.tail_index);
+		itoa::fmt(&mut self.url, integer).unwrap();
 		&self.url
 	}
 }
@@ -52,7 +56,7 @@ async fn determine_limit(
 	let i = Arc::new(AtomicUsize::new(1));
 
 	let workers = (0..num_workers).map(|_| {
-		let mut base = BaseBuffer::from(base);
+		let mut base = StringMutTail::from(base);
 		let client = Arc::clone(&client);
 		let i = Arc::clone(&i);
 		let min_failure = Arc::clone(&min_failure);
@@ -60,7 +64,7 @@ async fn determine_limit(
 			loop {
 				let level = i.fetch_add(1, atomic::Ordering::SeqCst);
 				let response = client
-					.head(base.with_param(level))
+					.head(base.with_tail_int(level))
 					.send()
 					.await
 					.and_then(|r| r.error_for_status());
