@@ -1,4 +1,4 @@
-use std::time::SystemTime;
+use std::{sync::Arc, time::SystemTime};
 
 #[tokio::main]
 async fn main() {
@@ -24,10 +24,10 @@ async fn main() {
 	let url = matches.value_of("URL").unwrap();
 	dbg!(url);
 
-	let client = reqwest::Client::new();
+	let client = Arc::new(reqwest::Client::new());
 
 	let start = SystemTime::now();
-	deathrip::rip(&client, url.to_string(), 8)
+	deathrip::rip(client, url.to_string(), 8)
 		.await
 		.unwrap()
 		.save(

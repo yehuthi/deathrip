@@ -13,11 +13,10 @@ use reqwest::Client;
 use tokio::sync::{Mutex, RwLock};
 
 async fn determine_limit(
-	client: &Client,
+	client: Arc<Client>,
 	base: String,
 	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
-	let client = Arc::new(client.clone());
 	let base = Arc::new(base);
 
 	let min_failure = Arc::new(RwLock::new(Ok::<usize, reqwest::Error>(usize::MAX)));
@@ -66,7 +65,7 @@ async fn determine_limit(
 }
 
 pub async fn determine_max_zoom(
-	client: &Client,
+	client: Arc<Client>,
 	base: String,
 	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
@@ -74,7 +73,7 @@ pub async fn determine_max_zoom(
 }
 
 pub async fn determine_columns(
-	client: &Client,
+	client: Arc<Client>,
 	base: String,
 	zoom: usize,
 	num_workers: usize,
@@ -86,7 +85,7 @@ pub async fn determine_columns(
 }
 
 pub async fn determine_rows(
-	client: &Client,
+	client: Arc<Client>,
 	base: String,
 	zoom: usize,
 	num_workers: usize,
@@ -98,13 +97,13 @@ pub async fn determine_rows(
 }
 
 pub async fn determine_dimensions(
-	client: &Client,
+	client: Arc<Client>,
 	base: String,
 	zoom: usize,
 	num_workers_half: usize,
 ) -> Result<(usize, usize), reqwest::Error> {
 	tokio::try_join!(
-		determine_columns(client, base.clone(), zoom, num_workers_half),
+		determine_columns(Arc::clone(&client), base.clone(), zoom, num_workers_half),
 		determine_rows(client, base, zoom, num_workers_half)
 	)
 }
@@ -141,18 +140,23 @@ impl From<image::ImageError> for Error {
 }
 
 pub async fn rip(
-	client: &reqwest::Client,
+	client: Arc<Client>,
 	base: String,
 	num_workers_half: usize,
 ) -> Result<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>, Error> {
-	let zoom = determine_max_zoom(client, base.clone(), num_workers_half * 2).await?;
-	let dims_task = async {
-		determine_dimensions(client, base.clone(), zoom, num_workers_half)
-			.await
-			.map_err(Error::HttpError)
+	let zoom = determine_max_zoom(Arc::clone(&client), base.clone(), num_workers_half * 2).await?;
+	let dims_task = {
+		let client = Arc::clone(&client);
+		async {
+			determine_dimensions(client, base.clone(), zoom, num_workers_half)
+				.await
+				.map_err(Error::HttpError)
+		}
 	};
+	let fetch_cell_client = Arc::clone(&client);
 	let fetch_cell = |(x, y): (usize, usize)| {
 		let fetch_cell_base = base.clone();
+		let client = Arc::clone(&fetch_cell_client);
 		async move {
 			let data = client
 				.get(format!(
