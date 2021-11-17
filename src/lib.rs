@@ -221,9 +221,9 @@ impl From<image::ImageError> for Error {
 pub async fn rip(
 	client: Arc<Client>,
 	base: &str,
+	zoom: usize,
 	num_workers_half: usize,
 ) -> Result<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>, Error> {
-	let zoom = determine_max_zoom(Arc::clone(&client), base, num_workers_half * 2).await?;
 	let dims_task = {
 		let client = Arc::clone(&client);
 		async {

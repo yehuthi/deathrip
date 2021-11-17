@@ -20,6 +20,21 @@ async fn main() {
 				.help("URL to the image page, image base, or item ID."),
 		)
 		.arg(
+			clap::Arg::with_name("ZOOM")
+				.short("z")
+				.long("zoom")
+				.takes_value(true)
+				.validator(|z| {
+					if let Ok(z) = z.parse::<usize>() {
+						if z > 0 {
+							return Ok(());
+						}
+					}
+					Err("ZOOM must be a positive integer.".to_owned())
+				})
+				.help("The zoom / resolution level. Must be >= 0. Leave unspecified for maximum."),
+		)
+		.arg(
 			clap::Arg::with_name("OUTPUT")
 				.short("o")
 				.long("output")
@@ -75,7 +90,15 @@ async fn main() {
 		}),
 		base_url: url,
 	};
-	deathrip::rip(client, &page.base_url, 8)
+
+	let zoom = if let Some(zoom) = matches.value_of("ZOOM") {
+		zoom.parse::<usize>().unwrap()
+	} else {
+		deathrip::determine_max_zoom(Arc::clone(&client), &page.base_url, 4)
+			.await
+			.unwrap()
+	};
+	deathrip::rip(client, &page.base_url, zoom, 8)
 		.await
 		.unwrap()
 		.save(
