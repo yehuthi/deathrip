@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 #[tokio::main]
 async fn main() {
 	const DEFAULT_OUTPUT_FILE_NAME: &str = "dss_rip.png";
@@ -24,7 +26,8 @@ async fn main() {
 
 	let client = reqwest::Client::new();
 
-	deathrip::rip(&client, url.to_string())
+	let start = SystemTime::now();
+	deathrip::rip(&client, url.to_string(), 8)
 		.await
 		.unwrap()
 		.save(
@@ -33,4 +36,5 @@ async fn main() {
 				.unwrap_or(DEFAULT_OUTPUT_FILE_NAME),
 		)
 		.unwrap();
+	println!("Elapsed {}ms", start.elapsed().unwrap().as_millis());
 }

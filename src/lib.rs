@@ -1,69 +1,111 @@
 use std::{
 	fmt::{self, Display},
 	io::Cursor,
-	sync::Arc,
+	sync::{
+		atomic::{self, AtomicUsize},
+		Arc,
+	},
 };
 
 use image::{GenericImage, GenericImageView};
 use itertools::Itertools;
 use reqwest::Client;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 async fn determine_limit(
 	client: &Client,
-	mut base: String,
-	params: &str,
+	base: String,
+	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
-	let mut level = 0;
-	base.reserve(10);
-	base.push_str(params);
-	let axis_index = base.len() - 1;
+	let client = Arc::new(client.clone());
+	let base = Arc::new(base);
 
-	loop {
-		let response = client.head(&base).send().await?;
-		if response.status().is_success() {
-			level += 1;
-			let next_level = level + 1;
-			base.truncate(axis_index);
-			itoa::fmt(&mut base, next_level).unwrap();
-		} else {
-			break;
-		}
-	}
+	let min_failure = Arc::new(RwLock::new(Ok::<usize, reqwest::Error>(usize::MAX)));
+	let i = Arc::new(AtomicUsize::new(1));
 
-	Ok(level)
+	let workers = (0..num_workers).map(|_| {
+		let client = Arc::clone(&client);
+		let base = Arc::clone(&base);
+		let i = Arc::clone(&i);
+		let min_failure = Arc::clone(&min_failure);
+		tokio::spawn(async move {
+			loop {
+				let level = i.fetch_add(1, atomic::Ordering::SeqCst);
+				let response = client
+					.head(format!("{}{}", base, level))
+					.send()
+					.await
+					.and_then(|r| r.error_for_status());
+				match response {
+					Ok(_) => {}
+					Err(e) if e.status().map_or(false, |c| c.is_client_error()) => {
+						let mut current_result = min_failure.write().await;
+						match *current_result {
+							Ok(previous_level) if level <= previous_level => {
+								*current_result = Ok(level);
+							}
+							Ok(_) => {}
+							Err(_) => {}
+						}
+						break;
+					}
+					Err(e) => {
+						*min_failure.write().await = Err(e);
+						break;
+					}
+				}
+			}
+		})
+	});
+
+	futures::future::try_join_all(workers).await.unwrap();
+	Arc::try_unwrap(min_failure)
+		.unwrap()
+		.into_inner()
+		.map(|l| l - 1)
 }
 
-pub async fn determine_max_zoom(client: &Client, base: String) -> Result<usize, reqwest::Error> {
-	determine_limit(client, base, "x0-y0-z1").await
+pub async fn determine_max_zoom(
+	client: &Client,
+	base: String,
+	num_workers: usize,
+) -> Result<usize, reqwest::Error> {
+	determine_limit(client, format!("{}x0-y0-z", base), num_workers).await
 }
 
 pub async fn determine_columns(
 	client: &Client,
 	base: String,
 	zoom: usize,
+	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
-	let params = format!("z{}-y0-x1", zoom);
-	determine_limit(client, base, &params).await.map(|c| c + 1)
+	let base = format!("{}z{}-y0-x", base, zoom);
+	determine_limit(client, base, num_workers)
+		.await
+		.map(|c| c + 1)
 }
 
 pub async fn determine_rows(
 	client: &Client,
 	base: String,
 	zoom: usize,
+	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
-	let params = format!("z{}-x0-y1", zoom);
-	determine_limit(client, base, &params).await.map(|r| r + 1)
+	let base = format!("{}z{}-x0-y", base, zoom);
+	determine_limit(client, base, num_workers)
+		.await
+		.map(|c| c + 1)
 }
 
 pub async fn determine_dimensions(
 	client: &Client,
 	base: String,
 	zoom: usize,
+	num_workers_half: usize,
 ) -> Result<(usize, usize), reqwest::Error> {
 	tokio::try_join!(
-		determine_columns(client, base.clone(), zoom),
-		determine_rows(client, base, zoom)
+		determine_columns(client, base.clone(), zoom, num_workers_half),
+		determine_rows(client, base, zoom, num_workers_half)
 	)
 }
 
@@ -101,10 +143,11 @@ impl From<image::ImageError> for Error {
 pub async fn rip(
 	client: &reqwest::Client,
 	base: String,
+	num_workers_half: usize,
 ) -> Result<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>, Error> {
-	let zoom = determine_max_zoom(client, base.clone()).await?;
+	let zoom = determine_max_zoom(client, base.clone(), num_workers_half * 2).await?;
 	let dims_task = async {
-		determine_dimensions(client, base.clone(), zoom)
+		determine_dimensions(client, base.clone(), zoom, num_workers_half)
 			.await
 			.map_err(Error::HttpError)
 	};
