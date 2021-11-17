@@ -1,7 +1,6 @@
-use std::{borrow::Cow, sync::Arc, time::SystemTime};
+use std::{borrow::Cow, process, sync::Arc, time::SystemTime};
 
-#[tokio::main]
-async fn main() {
+async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 	static DEFAULT_EXTENSION: &str = "png";
 	let output_help = format!(
 		"Output file name with .png or .jp[e]g extension. Default: <Item ID>.{} or \
@@ -67,7 +66,7 @@ async fn main() {
 			match normalized {
 				Ok(base) => base,
 				Err(page_url) => {
-					let page = deathrip::Page::try_fetch(&client, &page_url).await.unwrap();
+					let page = deathrip::Page::try_fetch(&client, &page_url).await?;
 					(page.base_url, Some(page.title))
 				}
 			}
@@ -84,8 +83,8 @@ async fn main() {
 				env!("CARGO_PKG_NAME"),
 				SystemTime::now()
 					.duration_since(SystemTime::UNIX_EPOCH)
-					.unwrap()
-					.as_millis()
+					.map(|time| time.as_millis())
+					.unwrap_or(0)
 			)
 		}),
 		base_url: url,
@@ -94,22 +93,25 @@ async fn main() {
 	let zoom = if let Some(zoom) = matches.value_of("ZOOM") {
 		zoom.parse::<usize>().unwrap()
 	} else {
-		deathrip::determine_max_zoom(Arc::clone(&client), &page.base_url, 4)
-			.await
-			.unwrap()
+		deathrip::determine_max_zoom(Arc::clone(&client), &page.base_url, 4).await?
 	};
-	deathrip::rip(client, &page.base_url, zoom, 8)
-		.await
-		.unwrap()
-		.save(
-			matches
-				.value_of("OUTPUT")
-				.map_or_else(
-					|| Cow::Owned(format!("{}.png", page.title)),
-					|out| Cow::Borrowed(out),
-				)
-				.as_ref(),
-		)
-		.unwrap();
+	deathrip::rip(client, &page.base_url, zoom, 8).await?.save(
+		matches
+			.value_of("OUTPUT")
+			.map_or_else(
+				|| Cow::Owned(format!("{}.png", page.title)),
+				|out| Cow::Borrowed(out),
+			)
+			.as_ref(),
+	)?;
 	println!("Elapsed {}ms", start.elapsed().unwrap().as_millis());
+	Ok(())
+}
+
+#[tokio::main]
+async fn main() {
+	if let Err(e) = cli().await {
+		eprintln!("Error: {}", e);
+		process::exit(1);
+	}
 }

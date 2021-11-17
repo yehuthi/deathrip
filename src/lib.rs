@@ -194,8 +194,8 @@ impl Display for Error {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
 			Error::HttpError(e) => write!(f, "HTTP error: {}", e),
-			Error::ImageError(e) => write!(f, "Image processing error: {}", e),
-			Error::ImageFormatGuessError(e) => write!(f, "Image format inference error: {}", e),
+			Error::ImageError(e) => write!(f, "image processing error: {}", e),
+			Error::ImageFormatGuessError(e) => write!(f, "image format inference error: {}", e),
 		}
 	}
 }
@@ -293,8 +293,8 @@ impl Display for PageError {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
 			PageError::HttpError(e) => write!(f, "HTTP error fetching page metadata: {}", e),
-			PageError::BaseNotFound => write!(f, "Failed to find the base image URL in the page."),
-			PageError::TitleNotFound => write!(f, "Failed to find the page title in the page."),
+			PageError::BaseNotFound => write!(f, "failed to find the base image URL in the page."),
+			PageError::TitleNotFound => write!(f, "failed to find the page title in the page."),
 		}
 	}
 }
