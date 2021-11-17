@@ -4,6 +4,9 @@ authors = ["Yehuthith <yehuthit@gmail.com>"]
 description = "Rips full-resolution images from the Dead Sea Scrolls digital library."
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/yehuthi/deathrip"
+keywords = ["dead sea scrolls", "history", "judaism", "israel", "bible", "literature"]
+categories = ["command-line-utilities", "multimedia::images"]
 
 [dependencies]
 clap = "2.33"
