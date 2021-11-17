@@ -4,6 +4,15 @@ A command-line tool to download full-resolution images from [The Dead Sea Scroll
 
 Accept the library's [terms of service](https://www.deadseascrolls.org.il/terms) before usage.
 
+# Installation
+
+You can install with `cargo`:
+```bash
+cargo install deathrip
+```
+
+Or on Windows download the latest [release](https://github.com/yehuthi/deathrip/releases).
+
 # Usage
 Simple usage:
 ```ps1
