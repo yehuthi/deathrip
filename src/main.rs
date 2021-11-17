@@ -51,7 +51,6 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 	let matches = app.get_matches();
 
 	let client = Arc::new(reqwest::Client::new());
-	let start = SystemTime::now();
 
 	let (url, out) = {
 		if let Ok(input) = deathrip::Input::try_from(matches.value_of("IMAGE").unwrap()) {
@@ -104,7 +103,6 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 			)
 			.as_ref(),
 	)?;
-	println!("Elapsed {}ms", start.elapsed().unwrap().as_millis());
 	Ok(())
 }
 
