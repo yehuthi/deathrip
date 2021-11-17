@@ -2,6 +2,14 @@ use std::{borrow::Cow, sync::Arc, time::SystemTime};
 
 #[tokio::main]
 async fn main() {
+	static DEFAULT_EXTENSION: &str = "png";
+	let output_help = format!(
+		"Output file name with .png or .jp[e]g extension. Default: <Item ID>.{} or \
+				{}_<unix-ms>.{} if the item ID cannot be determined.",
+		DEFAULT_EXTENSION,
+		env!("CARGO_PKG_NAME"),
+		DEFAULT_EXTENSION
+	);
 	let app = clap::App::new(env!("CARGO_PKG_NAME"))
 		.version(env!("CARGO_PKG_VERSION"))
 		.author(env!("CARGO_PKG_AUTHORS"))
@@ -16,7 +24,7 @@ async fn main() {
 				.short("o")
 				.long("output")
 				.takes_value(true)
-				.help("Output file name with .png or .jp[e]g extension. Default: <Item ID>.png")
+				.help(&output_help)
 				.validator(|path| {
 					let path = path.to_lowercase();
 					if path.ends_with(".png") || path.ends_with(".jpg") || path.ends_with(".jpeg") {
