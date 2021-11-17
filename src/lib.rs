@@ -12,26 +12,55 @@ use itertools::Itertools;
 use reqwest::Client;
 use tokio::sync::{Mutex, RwLock};
 
+#[derive(Debug, Hash, Default, Clone, PartialEq, PartialOrd, Eq, Ord)]
+struct BaseBuffer {
+	url: String,
+	axis_index: usize,
+}
+
+impl From<String> for BaseBuffer {
+	fn from(mut base: String) -> Self {
+		let axis_index = base.len();
+		base.reserve(10);
+		Self {
+			url: base,
+			axis_index,
+		}
+	}
+}
+
+impl From<&str> for BaseBuffer {
+	fn from(base: &str) -> Self {
+		Self::from(base.to_string())
+	}
+}
+
+impl BaseBuffer {
+	fn with_param(&mut self, value: usize) -> &str {
+		self.url.truncate(self.axis_index);
+		itoa::fmt(&mut self.url, value).unwrap();
+		&self.url
+	}
+}
+
 async fn determine_limit(
 	client: Arc<Client>,
-	base: String,
+	base: &str,
 	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
-	let base = Arc::new(base);
-
 	let min_failure = Arc::new(RwLock::new(Ok::<usize, reqwest::Error>(usize::MAX)));
 	let i = Arc::new(AtomicUsize::new(1));
 
 	let workers = (0..num_workers).map(|_| {
+		let mut base = BaseBuffer::from(base);
 		let client = Arc::clone(&client);
-		let base = Arc::clone(&base);
 		let i = Arc::clone(&i);
 		let min_failure = Arc::clone(&min_failure);
 		tokio::spawn(async move {
 			loop {
 				let level = i.fetch_add(1, atomic::Ordering::SeqCst);
 				let response = client
-					.head(format!("{}{}", base, level))
+					.head(base.with_param(level))
 					.send()
 					.await
 					.and_then(|r| r.error_for_status());
@@ -66,44 +95,44 @@ async fn determine_limit(
 
 pub async fn determine_max_zoom(
 	client: Arc<Client>,
-	base: String,
+	base: &str,
 	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
-	determine_limit(client, format!("{}x0-y0-z", base), num_workers).await
+	determine_limit(client, &format!("{}x0-y0-z", base), num_workers).await
 }
 
 pub async fn determine_columns(
 	client: Arc<Client>,
-	base: String,
+	base: &str,
 	zoom: usize,
 	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
 	let base = format!("{}z{}-y0-x", base, zoom);
-	determine_limit(client, base, num_workers)
+	determine_limit(client, &base, num_workers)
 		.await
 		.map(|c| c + 1)
 }
 
 pub async fn determine_rows(
 	client: Arc<Client>,
-	base: String,
+	base: &str,
 	zoom: usize,
 	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
 	let base = format!("{}z{}-x0-y", base, zoom);
-	determine_limit(client, base, num_workers)
+	determine_limit(client, &base, num_workers)
 		.await
 		.map(|c| c + 1)
 }
 
 pub async fn determine_dimensions(
 	client: Arc<Client>,
-	base: String,
+	base: &str,
 	zoom: usize,
 	num_workers_half: usize,
 ) -> Result<(usize, usize), reqwest::Error> {
 	tokio::try_join!(
-		determine_columns(Arc::clone(&client), base.clone(), zoom, num_workers_half),
+		determine_columns(Arc::clone(&client), base, zoom, num_workers_half),
 		determine_rows(client, base, zoom, num_workers_half)
 	)
 }
@@ -141,31 +170,24 @@ impl From<image::ImageError> for Error {
 
 pub async fn rip(
 	client: Arc<Client>,
-	base: String,
+	base: &str,
 	num_workers_half: usize,
 ) -> Result<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>, Error> {
-	let zoom = determine_max_zoom(Arc::clone(&client), base.clone(), num_workers_half * 2).await?;
+	let zoom = determine_max_zoom(Arc::clone(&client), base, num_workers_half * 2).await?;
 	let dims_task = {
 		let client = Arc::clone(&client);
 		async {
-			determine_dimensions(client, base.clone(), zoom, num_workers_half)
+			determine_dimensions(client, base, zoom, num_workers_half)
 				.await
 				.map_err(Error::HttpError)
 		}
 	};
 	let fetch_cell_client = Arc::clone(&client);
 	let fetch_cell = |(x, y): (usize, usize)| {
-		let fetch_cell_base = base.clone();
 		let client = Arc::clone(&fetch_cell_client);
 		async move {
 			let data = client
-				.get(format!(
-					"{}x{}-y{}-z{}",
-					fetch_cell_base.clone(),
-					x,
-					y,
-					zoom
-				))
+				.get(format!("{}x{}-y{}-z{}", base, x, y, zoom))
 				.send()
 				.await?
 				.error_for_status()?

@@ -27,7 +27,7 @@ async fn main() {
 	let client = Arc::new(reqwest::Client::new());
 
 	let start = SystemTime::now();
-	deathrip::rip(client, url.to_string(), 8)
+	deathrip::rip(client, url, 8)
 		.await
 		.unwrap()
 		.save(
