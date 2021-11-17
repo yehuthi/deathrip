@@ -16,7 +16,15 @@ async fn main() {
 				.short("o")
 				.long("output")
 				.takes_value(true)
-				.help("Output file name with .png or .jpg extension. Default: <Item ID>.png"),
+				.help("Output file name with .png or .jp[e]g extension. Default: <Item ID>.png")
+				.validator(|path| {
+					let path = path.to_lowercase();
+					if path.ends_with(".png") || path.ends_with(".jpg") || path.ends_with(".jpeg") {
+						Ok(())
+					} else {
+						Err("Output file must end with .png, .jpg or .jpeg.".into())
+					}
+				}),
 		);
 	let matches = app.get_matches();
 	let url = matches.value_of("URL").unwrap();
