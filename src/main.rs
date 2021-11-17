@@ -28,13 +28,15 @@ async fn main() {
 	deathrip::rip(client, &page.base_url, 8)
 		.await
 		.unwrap()
-		.save(dbg!(matches
-			.value_of("OUTPUT")
-			.map_or_else(
-				|| Cow::Owned(format!("{}.png", page.title)),
-				|out| Cow::Borrowed(out),
-			)
-			.as_ref()))
+		.save(
+			matches
+				.value_of("OUTPUT")
+				.map_or_else(
+					|| Cow::Owned(format!("{}.png", page.title)),
+					|out| Cow::Borrowed(out),
+				)
+				.as_ref(),
+		)
 		.unwrap();
 	println!("Elapsed {}ms", start.elapsed().unwrap().as_millis());
 }
