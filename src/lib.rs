@@ -49,8 +49,8 @@ impl StringMutTail {
 
 /// Determines the limit of an axis for the image.
 ///
-/// - The `base` parameter is the base URL of the image along with XYZ parameters (see section below), but with the
-/// target axis parameter last and without a value (e.g. end with `x0-y0-z` to target the Z axis).
+/// - The `base` parameter is the base URL of the image along with `=` and XYZ parameters (see section below), but with the
+/// target axis parameter last and without a value (e.g. end with `=x0-y0-z` to target the Z axis).
 /// - The `num_workers` is the amount of simultaneous requests that will be made.
 ///
 /// ## Base URL
@@ -58,8 +58,8 @@ impl StringMutTail {
 /// The base URL for this function is not the same as the base for [`rip`](rip).
 /// This one requires partial parameterization.
 ///
-/// An image base URL ends with `=` and then is appended with X, Y, and Z values in the format:
-/// `x<X>-y<Y>-z<Z>`. The order of the axes is insignificant.
+/// The image base URL is appended with `=` and X, Y, and Z values in the format:
+/// `=x<X>-y<Y>-z<Z>`. The order of the axes is insignificant.
 /// X and Y refer to position and Z refers to the resolution.
 ///
 /// This function will send HEAD requests, incrementing an axis determined by the base URL,
@@ -124,7 +124,7 @@ pub async fn determine_max_zoom(
 	base: &str,
 	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
-	determine_limit(client, &format!("{}x0-y0-z", base), num_workers).await
+	determine_limit(client, &format!("{}=x0-y0-z", base), num_workers).await
 }
 
 /// Determines the count of columns i.e. the amount of cells going across the image.
@@ -134,7 +134,7 @@ pub async fn determine_columns(
 	zoom: usize,
 	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
-	let base = format!("{}z{}-y0-x", base, zoom);
+	let base = format!("{}=z{}-y0-x", base, zoom);
 	determine_limit(client, &base, num_workers)
 		.await
 		.map(|c| c + 1)
@@ -147,7 +147,7 @@ pub async fn determine_rows(
 	zoom: usize,
 	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
-	let base = format!("{}z{}-x0-y", base, zoom);
+	let base = format!("{}=z{}-x0-y", base, zoom);
 	determine_limit(client, &base, num_workers)
 		.await
 		.map(|c| c + 1)
@@ -224,7 +224,7 @@ pub async fn rip(
 		let client = Arc::clone(&fetch_cell_client);
 		async move {
 			let data = client
-				.get(format!("{}x{}-y{}-z{}", base, x, y, zoom))
+				.get(format!("{}=x{}-y{}-z{}", base, x, y, zoom))
 				.send()
 				.await?
 				.error_for_status()?
@@ -261,4 +261,64 @@ pub async fn rip(
 	.unwrap();
 
 	Ok(Arc::try_unwrap(image).unwrap().into_inner())
+}
+
+#[derive(Debug)]
+pub enum PageError {
+	HttpError(reqwest::Error),
+	BaseNotFound,
+	TitleNotFound,
+}
+
+impl From<reqwest::Error> for PageError {
+	fn from(e: reqwest::Error) -> Self {
+		Self::HttpError(e)
+	}
+}
+
+impl Display for PageError {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			PageError::HttpError(e) => write!(f, "HTTP error fetching page metadata: {}", e),
+			PageError::BaseNotFound => write!(f, "Failed to find the base image URL in the page."),
+			PageError::TitleNotFound => write!(f, "Failed to find the page title in the page."),
+		}
+	}
+}
+
+impl std::error::Error for PageError {}
+
+#[derive(Debug, Hash, Default, Clone, PartialEq, PartialOrd, Eq, Ord)]
+pub struct Page {
+	pub title: String,
+	pub base_url: String,
+}
+
+impl Page {
+	pub async fn try_fetch(client: &Client, page_url: &str) -> Result<Self, PageError> {
+		let response = client.get(page_url).send().await?.text().await?;
+		let base_url = {
+			let regex =
+				regex::Regex::new(r#"<image-viewer[\s\S]+?url="(?P<url>https[^"]+)"#).unwrap();
+			regex
+				.captures(&response)
+				.and_then(|captures| captures.name("url"))
+				.ok_or(PageError::BaseNotFound)?
+				.as_str()
+				.to_owned()
+		};
+
+		let title = {
+			let regex =
+				regex::Regex::new(r#"<title>\s*[^-]+-\s*(?P<title>[^<]+?)\s*</title>"#).unwrap();
+			regex
+				.captures(&response)
+				.and_then(|captures| captures.name("title"))
+				.ok_or(PageError::TitleNotFound)?
+				.as_str()
+				.to_owned()
+		};
+
+		Ok(Self { title, base_url })
+	}
 }

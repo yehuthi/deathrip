@@ -1,8 +1,7 @@
-use std::{sync::Arc, time::SystemTime};
+use std::{borrow::Cow, sync::Arc, time::SystemTime};
 
 #[tokio::main]
 async fn main() {
-	const DEFAULT_OUTPUT_FILE_NAME: &str = "dss_rip.png";
 	let app = clap::App::new(env!("CARGO_PKG_NAME"))
 		.version(env!("CARGO_PKG_VERSION"))
 		.author(env!("CARGO_PKG_AUTHORS"))
@@ -17,24 +16,25 @@ async fn main() {
 				.short("o")
 				.long("output")
 				.takes_value(true)
-				.help("Output file name.")
-				.default_value(DEFAULT_OUTPUT_FILE_NAME),
+				.help("Output file name with .png or .jpg extension. Default: <Item ID>.png"),
 		);
 	let matches = app.get_matches();
 	let url = matches.value_of("URL").unwrap();
-	dbg!(url);
 
 	let client = Arc::new(reqwest::Client::new());
 
 	let start = SystemTime::now();
-	deathrip::rip(client, url, 8)
+	let page = deathrip::Page::try_fetch(&client, url).await.unwrap();
+	deathrip::rip(client, &page.base_url, 8)
 		.await
 		.unwrap()
-		.save(
-			matches
-				.value_of("OUTPUT")
-				.unwrap_or(DEFAULT_OUTPUT_FILE_NAME),
-		)
+		.save(dbg!(matches
+			.value_of("OUTPUT")
+			.map_or_else(
+				|| Cow::Owned(format!("{}.png", page.title)),
+				|out| Cow::Borrowed(out),
+			)
+			.as_ref()))
 		.unwrap();
 	println!("Elapsed {}ms", start.elapsed().unwrap().as_millis());
 }
