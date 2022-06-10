@@ -10,11 +10,11 @@ categories = ["command-line-utilities", "multimedia::images"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-clap = "2.33"
-futures = "0.3"
-image = "0.23"
-itertools = "0.10"
-itoa = "0.4"
-regex = "1.5"
-reqwest = "0.11"
-tokio = { version = "1", features = ["full"] }
+clap = "3.1.18"
+futures = "0.3.21"
+image = "0.24.2"
+itertools = "0.10.3"
+itoa = "1.0.2"
+regex = "1.5.6"
+reqwest = "0.11.10"
+tokio = { version = "1.19.2", features = ["full"] }
