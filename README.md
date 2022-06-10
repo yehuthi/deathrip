@@ -1,4 +1,4 @@
-# deathrip [<img src="https://img.shields.io/crates/v/deathrip" align="right" />](https://crates.io/crates/deathrip)
+# deathrip [<img src="https://img.shields.io/crates/v/deathrip" align="right" />](https://crates.io/crates/deathrip) [<img src="https://img.shields.io/docsrs/deathrip" align="right" />](https://docs.rs/deathrip)
 
 <a href="https://www.deadseascrolls.org.il/explore-the-archive/search#q=''+AND+script_type:'Paleo-Hebrew'"><img src="doc/b367578.png" height=300 align=right /></a>
 
