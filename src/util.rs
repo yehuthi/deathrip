@@ -28,7 +28,7 @@ impl StringMutTail {
 	/// Sets the [tail](StringMutTail::tail_index) to the given integer.
 	pub fn with_tail_int(&mut self, integer: impl itoa::Integer) -> &str {
 		self.url.truncate(self.tail_index);
-		itoa::fmt(&mut self.url, integer).unwrap();
+		self.url.push_str(itoa::Buffer::new().format(integer));
 		&self.url
 	}
 }
