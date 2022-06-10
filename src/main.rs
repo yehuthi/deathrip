@@ -1,59 +1,43 @@
-use std::{borrow::Cow, process, sync::Arc, time::SystemTime};
+use std::{process, sync::Arc, time::SystemTime};
+
+use clap::Parser;
+
+const DEFAULT_EXTENSION: &str = "png";
+const OUTPUT_HELP: &str = const_format::formatcp!(
+	"Output file name with .png or .jp[e]g extension. Default: <Item ID>.{} or \
+				{}_<unix-ms>.{} if the item ID cannot be determined.",
+	DEFAULT_EXTENSION,
+	env!("CARGO_PKG_NAME"),
+	DEFAULT_EXTENSION
+);
+
+#[derive(clap::Parser)]
+#[clap(author, version, about)]
+struct Cli {
+	/// URL to the image page, image base, or item ID.
+	image: String,
+	/// The zoom / resolution level. Must be >= 0. Leave unspecified for maximum.
+	#[clap(short, long, parse(try_from_str=cli_validate_zoom))]
+	zoom: Option<usize>,
+	#[clap(help = OUTPUT_HELP, short, long)]
+	output: Option<String>,
+}
+
+fn cli_validate_zoom(zoom: &str) -> Result<usize, String> {
+	let zoom = zoom.parse::<isize>().map_err(|e| e.to_string())?;
+	if zoom >= 0 {
+		Ok(zoom as usize)
+	} else {
+		Err(String::from("Zoom level must be >= 0"))
+	}
+}
 
 async fn cli() -> Result<(), Box<dyn std::error::Error>> {
-	static DEFAULT_EXTENSION: &str = "png";
-	let output_help = format!(
-		"Output file name with .png or .jp[e]g extension. Default: <Item ID>.{} or \
-				{}_<unix-ms>.{} if the item ID cannot be determined.",
-		DEFAULT_EXTENSION,
-		env!("CARGO_PKG_NAME"),
-		DEFAULT_EXTENSION
-	);
-	let app = clap::App::new(env!("CARGO_PKG_NAME"))
-		.version(env!("CARGO_PKG_VERSION"))
-		.author(env!("CARGO_PKG_AUTHORS"))
-		.about(env!("CARGO_PKG_DESCRIPTION"))
-		.arg(
-			clap::Arg::with_name("IMAGE")
-				.required(true)
-				.help("URL to the image page, image base, or item ID."),
-		)
-		.arg(
-			clap::Arg::with_name("ZOOM")
-				.short("z")
-				.long("zoom")
-				.takes_value(true)
-				.validator(|z| {
-					if let Ok(z) = z.parse::<usize>() {
-						if z > 0 {
-							return Ok(());
-						}
-					}
-					Err("ZOOM must be a positive integer.".to_owned())
-				})
-				.help("The zoom / resolution level. Must be >= 0. Leave unspecified for maximum."),
-		)
-		.arg(
-			clap::Arg::with_name("OUTPUT")
-				.short("o")
-				.long("output")
-				.takes_value(true)
-				.help(&output_help)
-				.validator(|path| {
-					let path = path.to_lowercase();
-					if path.ends_with(".png") || path.ends_with(".jpg") || path.ends_with(".jpeg") {
-						Ok(())
-					} else {
-						Err("Output file must end with .png, .jpg or .jpeg.".into())
-					}
-				}),
-		);
-	let matches = app.get_matches();
-
+	let cli = Cli::parse();
 	let client = Arc::new(reqwest::Client::new());
 
 	let (url, out) = {
-		if let Ok(input) = deathrip::Input::try_from(matches.value_of("IMAGE").unwrap()) {
+		if let Ok(input) = deathrip::Input::try_from(cli.image.as_str()) {
 			let normalized = match input {
 				deathrip::Input::BaseUrl(url) => Ok((url, None)),
 				deathrip::Input::PageUrl(url) => Err(url),
@@ -89,19 +73,14 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 		base_url: url,
 	};
 
-	let zoom = if let Some(zoom) = matches.value_of("ZOOM") {
-		zoom.parse::<usize>().unwrap()
+	let zoom = if let Some(zoom) = cli.zoom {
+		zoom
 	} else {
 		deathrip::determine_max_zoom(Arc::clone(&client), &page.base_url, 4).await?
 	};
 	deathrip::rip(client, &page.base_url, zoom, 8).await?.save(
-		matches
-			.value_of("OUTPUT")
-			.map_or_else(
-				|| Cow::Owned(format!("{}.{}", page.title, DEFAULT_EXTENSION)),
-				|out| Cow::Borrowed(out),
-			)
-			.as_ref(),
+		cli.output
+			.unwrap_or_else(|| format!("{}.{}", page.title, DEFAULT_EXTENSION)),
 	)?;
 	Ok(())
 }
