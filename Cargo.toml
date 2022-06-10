@@ -2,7 +2,7 @@
 name = "deathrip"
 authors = ["Yehuthith <yehuthit@gmail.com>"]
 description = "Rips full-resolution images from the Dead Sea Scrolls digital library."
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 repository = "https://github.com/yehuthi/deathrip"
 keywords = ["history", "judaism", "israel", "bible", "literature"]
