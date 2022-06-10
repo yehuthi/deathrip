@@ -85,7 +85,7 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 	Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
 	if let Err(e) = cli().await {
 		eprintln!("Error: {}", e);
