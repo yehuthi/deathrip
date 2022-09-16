@@ -21,9 +21,10 @@ pub enum Input {
 	/// The base URL of the image.
     ///
     /// This variant is a bit niche for end-users: it is the URL one would get by going to an item
-    /// page, right-clicking on the image and copying the image link.
+    /// page, right-clicking on the image, copying the image link, and removing the `=` and the
+    /// parameters after it.
     ///
-    /// For example, `https://lh5.ggpht.com/IFfrGztWa5KuIWKn2qAwASLds6reQ5IR8l8ColqH6I81oHWBITZ2I9ET=x0-y0-z2-nt0xQdGDMxc0B_GmdOZAeJofnlqWY0`.
+    /// For example, `https://lh5.ggpht.com/IFfrGztWa5KuIWKn2qAwASLds6reQ5IR8l8ColqH6I81oHWBITZ2I9ET`.
 	BaseUrl(String),
 	/// The URL for the image's page.
     ///
