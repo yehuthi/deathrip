@@ -6,7 +6,7 @@ use std::{
 	sync::{
 		atomic::{self, AtomicUsize},
 		Arc,
-	},
+	}, convert::Infallible,
 };
 
 use image::{GenericImage, GenericImageView};
@@ -46,7 +46,7 @@ impl Display for Input {
 ///
 /// Currently always succeeds with [`Input::ItemId`](Input::ItemId) as fallback, but may change later.
 impl TryFrom<&str> for Input {
-	type Error = ();
+	type Error = Infallible;
 
 	fn try_from(value: &str) -> Result<Self, Self::Error> {
 		let value = value.to_owned();
