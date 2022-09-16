@@ -1,6 +1,7 @@
-use std::{process, sync::Arc, time::SystemTime};
+use std::{process::ExitCode, sync::Arc, time::SystemTime};
 
 use clap::Parser;
+use tracing::metadata::LevelFilter;
 
 const DEFAULT_EXTENSION: &str = "png";
 const OUTPUT_HELP: &str = const_format::formatcp!(
@@ -21,6 +22,12 @@ struct Cli {
 	zoom: Option<usize>,
 	#[clap(help = OUTPUT_HELP, short, long)]
 	output: Option<String>,
+    /// Level of verbosity. Specify multiple times for more verbosity (up to 4 times).
+    #[clap(short, action = clap::ArgAction::Count)]
+    verbose: u8,
+    /// Suppress output (overrides verbose).
+    #[clap(short, long)]
+    quiet: bool,
 }
 
 fn cli_validate_zoom(zoom: &str) -> Result<usize, String> {
@@ -32,63 +39,88 @@ fn cli_validate_zoom(zoom: &str) -> Result<usize, String> {
 	}
 }
 
+impl<'a> From<&'a Cli> for LevelFilter {
+    fn from(cli: &'a Cli) -> Self {
+        if cli.quiet {
+            LevelFilter::OFF
+        } else {
+            match cli.verbose {
+                0 => LevelFilter::ERROR,
+                1 => LevelFilter::WARN,
+                2 => LevelFilter::INFO,
+                3 => LevelFilter::DEBUG,
+                _ => LevelFilter::TRACE,
+            }
+        }
+    }
+}
+
 async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 	let cli = Cli::parse();
-	let client = Arc::new(reqwest::Client::new());
+    
+    let verbosity = LevelFilter::from(&cli);
+    if verbosity != LevelFilter::OFF {
+        tracing_subscriber::FmtSubscriber::builder()
+            .without_time()
+            .with_max_level(verbosity)
+            .init();
+    }
 
-	let (url, out) = {
-		if let Ok(input) = deathrip::Input::try_from(cli.image.as_str()) {
-			let normalized = match input {
-				deathrip::Input::BaseUrl(url) => Ok((url, None)),
-				deathrip::Input::PageUrl(url) => Err(url),
-				deathrip::Input::ItemId(id) => Err(format!(
-					"https://www.deadseascrolls.org.il/explore-the-archive/image/{}",
-					id
-				)),
-			};
-			match normalized {
-				Ok(base) => base,
-				Err(page_url) => {
-					let page = deathrip::Page::try_fetch(&client, &page_url).await?;
-					(page.base_url, Some(page.title))
-				}
-			}
-		} else {
-			eprintln!("Failed to determine the image type.");
-			std::process::exit(1);
-		}
-	};
+    let client = Arc::new(reqwest::Client::new());
 
-	let page = deathrip::Page {
-		title: out.unwrap_or_else(|| {
-			format!(
-				"{}_{}",
-				env!("CARGO_PKG_NAME"),
-				SystemTime::now()
-					.duration_since(SystemTime::UNIX_EPOCH)
-					.map(|time| time.as_millis())
-					.unwrap_or(0)
-			)
-		}),
-		base_url: url,
-	};
+    let (url, out) = {
+        if let Ok(input) = deathrip::Input::try_from(cli.image.as_str()) {
+            let normalized = match input {
+                deathrip::Input::BaseUrl(url) => Ok((url, None)),
+                deathrip::Input::PageUrl(url) => Err(url),
+                deathrip::Input::ItemId(id) => Err(format!(
+                        "https://www.deadseascrolls.org.il/explore-the-archive/image/{}",
+                        id
+                        )),
+            };
+            match normalized {
+                Ok(base) => base,
+                Err(page_url) => {
+                    let page = deathrip::Page::try_fetch(&client, &page_url).await?;
+                    (page.base_url, Some(page.title))
+                }
+            }
+        } else {
+            tracing::error!("failed to determine the image type.");
+            std::process::exit(1);
+        }
+    };
 
-	let zoom = if let Some(zoom) = cli.zoom {
-		zoom
-	} else {
-		deathrip::determine_max_zoom(Arc::clone(&client), &page.base_url, 4).await?
-	};
-	deathrip::rip(client, &page.base_url, zoom, 8).await?.save(
-		cli.output
-			.unwrap_or_else(|| format!("{}.{}", page.title, DEFAULT_EXTENSION)),
-	)?;
-	Ok(())
+    let page = deathrip::Page {
+        title: out.unwrap_or_else(|| {
+            format!(
+                "{}_{}",
+                env!("CARGO_PKG_NAME"),
+                SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map(|time| time.as_millis())
+                .unwrap_or(0)
+                )
+        }),
+        base_url: url,
+    };
+
+    let zoom = if let Some(zoom) = cli.zoom {
+        zoom
+    } else {
+        deathrip::determine_max_zoom(Arc::clone(&client), &page.base_url, 4).await?
+    };
+    deathrip::rip(client, &page.base_url, zoom, 8).await?.save(
+        cli.output
+        .unwrap_or_else(|| format!("{}.{}", page.title, DEFAULT_EXTENSION)),
+        )?;
+    Ok(())
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() {
-	if let Err(e) = cli().await {
-		eprintln!("Error: {}", e);
-		process::exit(1);
-	}
+async fn main() -> ExitCode {
+    if let Err(e) = cli().await {
+        tracing::error!("{e}");
+        ExitCode::FAILURE
+    } else { ExitCode::SUCCESS }
 }
