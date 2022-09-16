@@ -22,7 +22,8 @@ struct Cli {
 	zoom: Option<usize>,
 	#[clap(help = OUTPUT_HELP, short, long)]
 	output: Option<String>,
-    /// Level of verbosity. Specify multiple times for more verbosity (up to 4 times).
+    /// Level of verbosity. Specify multiple times for more verbosity (up to 4 times). Overridden
+    /// by quiet.
     #[clap(short, action = clap::ArgAction::Count)]
     verbose: u8,
     /// Suppress output (overrides verbose).
