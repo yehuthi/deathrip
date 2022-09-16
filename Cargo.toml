@@ -10,12 +10,12 @@ categories = ["command-line-utilities", "multimedia::images"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-clap = { version = "3.1.18", features = ["derive"] }
-const_format = "0.2.24"
-futures = "0.3.21"
-image = "0.24.2"
-itertools = "0.10.3"
-itoa = "1.0.2"
-regex = "1.5.6"
-reqwest = "0.11.10"
-tokio = { version = "1.19.2", features = ["rt", "macros"] }
+clap = { version = "3.2.21", features = ["derive"] }
+const_format = "0.2.26"
+futures = "0.3.24"
+image = "0.24.3"
+itertools = "0.10.4"
+itoa = "1.0.3"
+regex = "1.6.0"
+reqwest = "0.11.11"
+tokio = { version = "1.21.1", features = ["rt", "macros"] }
