@@ -10,7 +10,7 @@ use std::{
 };
 
 use image::{GenericImage, GenericImageView};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use reqwest::Client;
 use tokio::sync::{Mutex, RwLock};
 use util::StringMutTail;
