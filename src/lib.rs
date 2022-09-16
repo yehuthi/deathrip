@@ -19,10 +19,21 @@ use util::StringMutTail;
 #[derive(Debug, Hash, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Input {
 	/// The base URL of the image.
+    ///
+    /// This variant is a bit niche for end-users: it is the URL one would get by going to an item
+    /// page, right-clicking on the image and copying the image link.
+    ///
+    /// For example, `https://lh5.ggpht.com/IFfrGztWa5KuIWKn2qAwASLds6reQ5IR8l8ColqH6I81oHWBITZ2I9ET=x0-y0-z2-nt0xQdGDMxc0B_GmdOZAeJofnlqWY0`.
 	BaseUrl(String),
-	/// The page of the image.
+	/// The URL for the image's page.
+    ///
+    /// For example, `https://www.deadseascrolls.org.il/explore-the-archive/image/B-497904`.
 	PageUrl(String),
 	/// The item ID of the image.
+    ///
+    /// E.g. for [this item](https://www.deadseascrolls.org.il/explore-the-archive/image/B-497904)
+    /// it is B-497904, which is specified in the page itself (top of left pane), and at the end of
+    /// the URL.
 	ItemId(String),
 }
 
