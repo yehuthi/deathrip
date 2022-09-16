@@ -1,10 +1,14 @@
-/// A [`String`](String) buffer with a mutating tail.
+//! Internal utilities.
+
+/// A [`String`] buffer with a mutating tail.
 #[derive(Debug, Hash, Default, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct StringMutTail {
-	/// The [`String`](String) value.
+	/// The [`String`] value.
 	url: String,
-	/// The index of the tail. Text after it is considered the tail.
-	tail_index: usize,
+    /// The index of the tail.
+    ///
+    /// The tail is at `&url[tail_index..]`.
+    tail_index: usize,
 }
 
 impl From<String> for StringMutTail {

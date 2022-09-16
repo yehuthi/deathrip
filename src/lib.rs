@@ -31,7 +31,7 @@ impl AsRef<str> for Input {
 		match self {
 			Input::BaseUrl(s) => s.as_str(),
 			Input::PageUrl(s) => s.as_str(),
-			Input::ItemId(s) => s.as_str(),
+			Input::ItemId(s)  => s.as_str(),
 		}
 	}
 }
