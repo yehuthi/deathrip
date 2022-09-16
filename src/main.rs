@@ -73,10 +73,7 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
             let normalized = match input {
                 deathrip::Input::BaseUrl(url) => Ok((url, None)),
                 deathrip::Input::PageUrl(url) => Err(url),
-                deathrip::Input::ItemId(id) => Err(format!(
-                        "https://www.deadseascrolls.org.il/explore-the-archive/image/{}",
-                        id
-                        )),
+                deathrip::Input::ItemId(id) => Err(format!("https://www.deadseascrolls.org.il/explore-the-archive/image/{id}")),
             };
             match normalized {
                 Ok(base) => base,
@@ -112,7 +109,7 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
     };
     deathrip::rip(client, &page.base_url, zoom, 8).await?.save(
         cli.output
-        .unwrap_or_else(|| format!("{}.{}", page.title, DEFAULT_EXTENSION)),
+        .unwrap_or_else(|| format!("{}.{DEFAULT_EXTENSION}", page.title)),
         )?;
     Ok(())
 }
