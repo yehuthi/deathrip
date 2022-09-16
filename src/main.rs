@@ -1,4 +1,4 @@
-use std::{process::ExitCode, sync::Arc, time::SystemTime};
+use std::{process::ExitCode, sync::Arc, time::{SystemTime, Instant}};
 
 use clap::Parser;
 use tracing::metadata::LevelFilter;
@@ -67,6 +67,8 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
             .init();
     }
 
+    let time_start = Instant::now();
+
     let client = Arc::new(reqwest::Client::new());
 
     let (url, out) = {
@@ -112,6 +114,9 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
         cli.output
         .unwrap_or_else(|| format!("{}.{DEFAULT_EXTENSION}", page.title)),
         )?;
+
+    let dur_total = time_start.elapsed();
+    tracing::info!("Finished ripping image in {}ms", dur_total.as_millis());
     Ok(())
 }
 
