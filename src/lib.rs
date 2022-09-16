@@ -180,38 +180,17 @@ pub async fn determine_dimensions(
 }
 
 /// An error when fetching or processing an image.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
 	/// Failure trying to fetch an image or metadata.
-	HttpError(reqwest::Error),
+    #[error("HTTP error: {0}")]
+	HttpError(#[from] reqwest::Error),
 	/// Failure trying to decode an image.
-	ImageError(image::ImageError),
+    #[error("image processing error: {0}")]
+	ImageError(#[from] image::ImageError),
 	/// Failure trying to determine the image's format.
+    #[error("image format inference error: {0}")]
 	ImageFormatGuessError(std::io::Error),
-}
-
-impl Display for Error {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			Error::HttpError(e) => write!(f, "HTTP error: {}", e),
-			Error::ImageError(e) => write!(f, "image processing error: {}", e),
-			Error::ImageFormatGuessError(e) => write!(f, "image format inference error: {}", e),
-		}
-	}
-}
-
-impl std::error::Error for Error {}
-
-impl From<reqwest::Error> for Error {
-	fn from(e: reqwest::Error) -> Self {
-		Self::HttpError(e)
-	}
-}
-
-impl From<image::ImageError> for Error {
-	fn from(e: image::ImageError) -> Self {
-		Self::ImageError(e)
-	}
 }
 
 /// Rips an image from the given base URL.
@@ -276,30 +255,15 @@ pub async fn rip(
 	Ok(Arc::try_unwrap(image).unwrap().into_inner())
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum PageError {
-	HttpError(reqwest::Error),
+    #[error("HTTP error fetching page metadata: {0}")]
+	HttpError(#[from] reqwest::Error),
+    #[error("failed to find the base image URL in the page")]
 	BaseNotFound,
+    #[error("failed to find the page title in the page")]
 	TitleNotFound,
 }
-
-impl From<reqwest::Error> for PageError {
-	fn from(e: reqwest::Error) -> Self {
-		Self::HttpError(e)
-	}
-}
-
-impl Display for PageError {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			PageError::HttpError(e) => write!(f, "HTTP error fetching page metadata: {}", e),
-			PageError::BaseNotFound => write!(f, "failed to find the base image URL in the page."),
-			PageError::TitleNotFound => write!(f, "failed to find the page title in the page."),
-		}
-	}
-}
-
-impl std::error::Error for PageError {}
 
 #[derive(Debug, Hash, Default, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Page {
