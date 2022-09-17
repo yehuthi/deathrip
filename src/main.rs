@@ -24,7 +24,7 @@ struct Cli {
 	zoom: Option<usize>,
     /// The output file. If missing, it will be auto-generated, unless the output is piped.
 	#[clap(help = OUTPUT_HELP, short, long)]
-	output: Option<String>,
+	output: Option<PathBuf>,
     /// The output format. Possible options are: png | jp[e]g[<Q>] | bmp | gif | tiff | tga | ico | [open]exr | farbfeld.
     /// The variable Q is a number within [0,100] that controls quality (higher is better).
     #[clap(short, long, default_value = "png", parse(try_from_str = parse_format))]
@@ -153,7 +153,7 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 
     let atty = atty::is(atty::Stream::Stdout);
     if atty {
-        let out_path = cli.output.map_or_else(|| PathBuf::from(format!("{}.{DEFAULT_EXTENSION}", page.title)), PathBuf::from);
+        let out_path = cli.output.unwrap_or_else(|| PathBuf::from(format!("{}.{DEFAULT_EXTENSION}", page.title)));
         tracing::info!("writing ripped image to output file {}", out_path.display());
         if let Some(parent) = out_path.parent() { fs::create_dir_all(parent).await?; }
         let mut out_file = fs::File::create(out_path).await?.into_std().await;
