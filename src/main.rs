@@ -23,11 +23,10 @@ struct Cli {
 	zoom: Option<usize>,
 	#[clap(help = OUTPUT_HELP, short, long)]
 	output: Option<String>,
-    /// Level of verbosity. Specify multiple times for more verbosity (up to 4 times). Overridden
-    /// by quiet.
-    #[clap(short, action = clap::ArgAction::Count)]
-    verbose: u8,
-    /// Suppress output (overrides verbose).
+    /// Verbose output. Overridden by quiet.
+    #[clap(short, long)]
+    verbose: bool,
+    /// Suppress output. Overrides verbose.
     #[clap(short, long)]
     quiet: bool,
 }
@@ -43,16 +42,10 @@ fn cli_validate_zoom(zoom: &str) -> Result<usize, String> {
 
 impl<'a> From<&'a Cli> for LevelFilter {
     fn from(cli: &'a Cli) -> Self {
-        if cli.quiet {
-            LevelFilter::OFF
-        } else {
-            match cli.verbose {
-                0 => LevelFilter::ERROR,
-                1 => LevelFilter::WARN,
-                2 => LevelFilter::INFO,
-                3 => LevelFilter::DEBUG,
-                _ => LevelFilter::TRACE,
-            }
+        match (cli.quiet, cli.verbose) {
+            (true,  _    ) => LevelFilter::OFF,
+            (false, false) => LevelFilter::INFO,
+            (false, true ) => LevelFilter::TRACE,
         }
     }
 }
@@ -74,6 +67,7 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Arc::new(reqwest::Client::new());
 
+    tracing::info!("determining metadata");
     let (url, out) = {
         if let Ok(input) = deathrip::Input::try_from(cli.image.as_str()) {
             let normalized = match input {
@@ -84,6 +78,7 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
             match normalized {
                 Ok(base) => base,
                 Err(page_url) => {
+                    tracing::info!("fetching metadata from page URL");
                     let page = deathrip::Page::try_fetch(&client, &page_url).await?;
                     (page.base_url, Some(page.title))
                 }

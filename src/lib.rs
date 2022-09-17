@@ -248,7 +248,7 @@ pub async fn rip(
 	let (tile_width, tile_height) = head.dimensions();
     let image_width = columns as u32 * tile_width;
     let image_height = rows as u32 * tile_height;
-    tracing::trace!("cell size is {tile_width} \u{00D7} {tile_height}, total image size will be {image_width} \u{00D7} {image_height}");
+    tracing::trace!("cell size is {tile_width}\u{00D7}{tile_height}, total image size will be {image_width}\u{00D7}{image_height}");
 
 	let mut image = image::ImageBuffer::new(image_width, image_height);
 	image.copy_from(&head, 0, 0)?;
