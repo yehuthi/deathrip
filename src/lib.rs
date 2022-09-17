@@ -90,7 +90,7 @@ impl TryFrom<&str> for Input {
 /// This function will send HEAD requests, incrementing an axis determined by the base URL,
 /// and will return the highest value that succeeds.
 async fn determine_limit(
-	client: Arc<Client>,
+	client: impl AsRef<Client> + 'static + Send + Clone,
 	base: &str,
 	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
@@ -103,11 +103,12 @@ async fn determine_limit(
 
 	let workers = (0..num_workers).map(|_| {
 		let mut base = StringMutTail::from(base);
-		let client = Arc::clone(&client);
 		let i = Arc::clone(&i);
 		let min_failure = Arc::clone(&min_failure);
+        let client = client.clone();
 		tokio::spawn(async move {
 			loop {
+                let client = client.as_ref();
 				let level = i.fetch_add(1, atomic::Ordering::SeqCst);
 				let response = client
 					.head(base.with_tail_int(level))
@@ -145,7 +146,7 @@ async fn determine_limit(
 
 /// Determines the max zoom level for the image at the base URL.
 pub async fn determine_max_zoom(
-	client: Arc<Client>,
+	client: impl AsRef<Client> + 'static + Send + Clone,
 	base: &str,
 	num_workers: usize,
 ) -> Result<usize, reqwest::Error> {
@@ -154,7 +155,7 @@ pub async fn determine_max_zoom(
 
 /// Determines the count of columns i.e. the amount of cells going across the image.
 pub async fn determine_columns(
-	client: Arc<Client>,
+	client: impl AsRef<Client> + 'static + Send + Clone,
 	base: &str,
 	zoom: usize,
 	num_workers: usize,
@@ -167,7 +168,7 @@ pub async fn determine_columns(
 
 /// Determines the count of rows i.e. the amount of cells going along the image.
 pub async fn determine_rows(
-	client: Arc<Client>,
+	client: impl AsRef<Client> + 'static + Send + Clone,
 	base: &str,
 	zoom: usize,
 	num_workers: usize,
@@ -180,13 +181,13 @@ pub async fn determine_rows(
 
 /// Determines the [rows](determine_rows) and [columns](determine_columns) of the image (in-parallel).
 pub async fn determine_dimensions(
-	client: Arc<Client>,
+	client: impl AsRef<Client> + 'static + Send + Clone,
 	base: &str,
 	zoom: usize,
 	num_workers_half: usize,
 ) -> Result<(usize, usize), reqwest::Error> {
 	tokio::try_join!(
-		determine_columns(Arc::clone(&client), base, zoom, num_workers_half),
+		determine_columns(Clone::clone(&client), base, zoom, num_workers_half),
 		determine_rows(client, base, zoom, num_workers_half)
 	)
 }
@@ -210,25 +211,26 @@ pub enum Error {
 /// `num_workers_half` corresponds to half of the amount of parallel connections that will be used to
 /// fetch metadata (half because at most two operations will get this limit in parallel).
 pub async fn rip(
-	client: Arc<Client>,
+	client: impl AsRef<Client> + 'static + Send + Clone,
 	base: &str,
 	zoom: usize,
 	num_workers_half: usize,
 ) -> Result<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>, Error> {
 	let dims_task = {
-		let client = Arc::clone(&client);
+		let client = Clone::clone(&client);
 		async {
 			determine_dimensions(client, base, zoom, num_workers_half)
 				.await
 				.map_err(Error::HttpError)
 		}
 	};
-	let fetch_cell_client = Arc::clone(&client);
+	let fetch_cell_client = Clone::clone(&client);
 	let fetch_cell = |(x, y): (usize, usize)| {
         tracing::trace!("fetching cell ({x},{y})");
-		let client = Arc::clone(&fetch_cell_client);
+		let client = Clone::clone(&fetch_cell_client);
 		async move {
 			let data = client
+                .as_ref()
 				.get(format!("{}=x{}-y{}-z{}", base, x, y, zoom))
 				.send()
 				.await?
