@@ -1,7 +1,8 @@
 use std::{process::ExitCode, sync::Arc, time::{SystemTime, Instant}};
 
 use clap::Parser;
-use tracing::metadata::LevelFilter;
+use tracing::{metadata::LevelFilter, Instrument};
+use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
 const DEFAULT_EXTENSION: &str = "png";
 const OUTPUT_HELP: &str = const_format::formatcp!(
@@ -61,9 +62,11 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
     
     let verbosity = LevelFilter::from(&cli);
     if verbosity != LevelFilter::OFF {
-        tracing_subscriber::FmtSubscriber::builder()
-            .without_time()
-            .with_max_level(verbosity)
+        tracing_subscriber::registry()
+            .with(tracing_subscriber::fmt::layer()
+                  .without_time())
+            .with(tracing_subscriber::filter::Targets::new()
+                  .with_target(env!("CARGO_PKG_NAME"), verbosity))
             .init();
     }
 
@@ -105,18 +108,26 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
         base_url: url,
     };
 
+    let span_zoom = tracing::info_span!("determining zoom level").entered();
     let zoom = if let Some(zoom) = cli.zoom {
+        tracing::trace!("user supplied zoom level {zoom}");
         zoom
     } else {
-        deathrip::determine_max_zoom(Arc::clone(&client), &page.base_url, 4).await?
+        let zoom = deathrip::determine_max_zoom(Arc::clone(&client), &page.base_url, 4).await?;
+        tracing::info!("determined zoom level of {zoom}");
+        zoom
     };
-    deathrip::rip(client, &page.base_url, zoom, 8).await?.save(
-        cli.output
-        .unwrap_or_else(|| format!("{}.{DEFAULT_EXTENSION}", page.title)),
-        )?;
+    drop(span_zoom);
+
+    let span_ripping = tracing::info_span!("ripping image");
+    let image = deathrip::rip(client, &page.base_url, zoom, 8)
+        .instrument(span_ripping)
+        .await?;
+    tracing::info!("writing ripped image to output");
+    image.save(cli.output.unwrap_or_else(|| format!("{}.{DEFAULT_EXTENSION}", page.title)))?;
 
     let dur_total = time_start.elapsed();
-    tracing::info!("Finished ripping image in {}ms", dur_total.as_millis());
+    tracing::info!("finished ripping image in {}ms", dur_total.as_millis());
     Ok(())
 }
 

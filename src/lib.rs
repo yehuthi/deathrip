@@ -225,6 +225,7 @@ pub async fn rip(
 	};
 	let fetch_cell_client = Arc::clone(&client);
 	let fetch_cell = |(x, y): (usize, usize)| {
+        tracing::trace!("fetching cell ({x},{y})");
 		let client = Arc::clone(&fetch_cell_client);
 		async move {
 			let data = client
@@ -243,9 +244,13 @@ pub async fn rip(
 	};
 	let head_task = fetch_cell((0, 0));
 	let ((columns, rows), head) = tokio::try_join!(dims_task, head_task)?;
+    tracing::trace!("determined {columns} columns \u{00D7} {rows} rows");
 	let (tile_width, tile_height) = head.dimensions();
+    let image_width = columns as u32 * tile_width;
+    let image_height = rows as u32 * tile_height;
+    tracing::trace!("cell size is {tile_width} \u{00D7} {tile_height}, total image size will be {image_width} \u{00D7} {image_height}");
 
-	let mut image = image::ImageBuffer::new(columns as u32 * tile_width, rows as u32 * tile_height);
+	let mut image = image::ImageBuffer::new(image_width, image_height);
 	image.copy_from(&head, 0, 0)?;
 
 	let image = Arc::new(Mutex::new(image));
@@ -254,6 +259,7 @@ pub async fn rip(
 		let image = Arc::clone(&image);
 		async move {
 			let cell = fetch_cell((x, y)).await?;
+            tracing::trace!("fetched cell ({x},{y})");
 			image
 				.lock()
 				.await
