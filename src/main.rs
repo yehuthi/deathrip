@@ -146,9 +146,8 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
     };
     drop(span_zoom);
 
-    let span_ripping = tracing::info_span!("ripping image");
     let image = deathrip::rip(client, &page.base_url, zoom, 8)
-        .instrument(span_ripping)
+        .instrument(tracing::info_span!("ripping image"))
         .await?;
 
     let atty = atty::is(atty::Stream::Stdout);
