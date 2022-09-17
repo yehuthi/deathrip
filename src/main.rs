@@ -149,6 +149,8 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 	let image = deathrip::rip(client, &page.base_url, zoom, 8)
 		.instrument(tracing::info_span!("ripping image"))
 		.await?;
+	let dur_rip = time_start.elapsed();
+	tracing::info!("finished ripping image in {}ms", dur_rip.as_millis());
 
 	let atty = atty::is(atty::Stream::Stdout);
 	if atty {
@@ -166,7 +168,7 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 	}
 
 	let dur_total = time_start.elapsed();
-	tracing::info!("finished ripping image in {}ms", dur_total.as_millis());
+	tracing::info!("finished in {}ms", dur_total.as_millis());
 	Ok(())
 }
 
