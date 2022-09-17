@@ -1,13 +1,14 @@
-use std::{process::ExitCode, sync::Arc, time::{SystemTime, Instant}};
+use std::{process::ExitCode, sync::Arc, time::{SystemTime, Instant}, io::{Cursor, Write}, path::PathBuf};
 
 use clap::Parser;
+use image::ImageOutputFormat;
+use tokio::fs;
 use tracing::{metadata::LevelFilter, Instrument};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
 const DEFAULT_EXTENSION: &str = "png";
 const OUTPUT_HELP: &str = const_format::formatcp!(
-	"Output file name with .png or .jp[e]g extension. Default: <Item ID>.{} or \
-				{}_<unix-ms>.{} if the item ID cannot be determined.",
+	"Output file name. Default: <Item ID>.{} or {}_<unix-ms>.{} if the item ID cannot be determined.",
 	DEFAULT_EXTENSION,
 	env!("CARGO_PKG_NAME"),
 	DEFAULT_EXTENSION
@@ -21,14 +22,44 @@ struct Cli {
 	/// The zoom / resolution level. Must be >= 0. Leave unspecified for maximum.
 	#[clap(short, long, parse(try_from_str=cli_validate_zoom))]
 	zoom: Option<usize>,
+    /// The output file. If missing, it will be auto-generated, unless the output is piped.
 	#[clap(help = OUTPUT_HELP, short, long)]
 	output: Option<String>,
+    /// The output format. Possible options are: png | jp[e]g[<Q>] | bmp | gif | tiff | tga | ico | [open]exr | farbfeld.
+    /// The variable Q is a number within [0,100] that controls quality (higher is better).
+    #[clap(short, long, default_value = "png", parse(try_from_str = parse_format))]
+    format: ImageOutputFormat,
     /// Verbose output. Overridden by quiet.
     #[clap(short, long)]
     verbose: bool,
     /// Suppress output. Overrides verbose.
     #[clap(short, long)]
     quiet: bool,
+}
+
+fn parse_format(format: &str) -> Result<ImageOutputFormat, &'static str> {
+    let format = format.to_ascii_lowercase();
+    match format.as_str() {
+        "png"             => Ok(ImageOutputFormat::Png),
+        "bmp"             => Ok(ImageOutputFormat::Bmp),
+        "gif"             => Ok(ImageOutputFormat::Gif),
+        "ico"             => Ok(ImageOutputFormat::Ico),
+        "farbfeld"        => Ok(ImageOutputFormat::Farbfeld),
+        "tga"             => Ok(ImageOutputFormat::Tga),
+        "exr" | "openexr" => Ok(ImageOutputFormat::OpenExr),
+        "tiff"            => Ok(ImageOutputFormat::Tiff),
+        _ => {
+            let jpg_len = if format.starts_with("jpg") { Some(3) } else if format.starts_with("jpeg") { Some(4) } else { None };
+            if let Some(jpg_len) = jpg_len {
+                let quality = &format[jpg_len..];
+                if quality.is_empty() {
+                    Ok(ImageOutputFormat::Jpeg(100))
+                } else if let Ok(quality) = quality.parse::<u8>() {
+                    Ok(ImageOutputFormat::Jpeg(quality.min(100)))
+                } else { Err("couldn't parse the quality, it should be a number within [0,100]") }
+            } else { Err("unrecognized image output format") }
+        }
+    }
 }
 
 fn cli_validate_zoom(zoom: &str) -> Result<usize, String> {
@@ -57,6 +88,7 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
     if verbosity != LevelFilter::OFF {
         tracing_subscriber::registry()
             .with(tracing_subscriber::fmt::layer()
+                  .with_writer(std::io::stderr)
                   .without_time())
             .with(tracing_subscriber::filter::Targets::new()
                   .with_target(env!("CARGO_PKG_NAME"), verbosity))
@@ -118,8 +150,21 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
     let image = deathrip::rip(client, &page.base_url, zoom, 8)
         .instrument(span_ripping)
         .await?;
-    tracing::info!("writing ripped image to output");
-    image.save(cli.output.unwrap_or_else(|| format!("{}.{DEFAULT_EXTENSION}", page.title)))?;
+
+    let atty = atty::is(atty::Stream::Stdout);
+    if atty {
+        let out_path = cli.output.map_or_else(|| PathBuf::from(format!("{}.{DEFAULT_EXTENSION}", page.title)), PathBuf::from);
+        tracing::info!("writing ripped image to output file {}", out_path.display());
+        if let Some(parent) = out_path.parent() { fs::create_dir_all(parent).await?; }
+        let mut out_file = fs::File::create(out_path).await?.into_std().await;
+        image.write_to(&mut out_file, cli.format)?;
+    } else {
+        tracing::info!("writing ripped image to output stream");
+        let (w,h) = image.dimensions();
+        let mut buf = Vec::with_capacity(w as usize * h as usize * 3);
+        image.write_to(&mut Cursor::new(&mut buf), cli.format)?;
+        std::io::stdout().write_all(&buf)?;
+    }
 
     let dur_total = time_start.elapsed();
     tracing::info!("finished ripping image in {}ms", dur_total.as_millis());
