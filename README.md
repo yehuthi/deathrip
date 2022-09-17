@@ -25,7 +25,7 @@ Or on Windows download the latest [release](https://github.com/yehuthi/deathrip/
 # Usage
 Simple usage:
 ```ps1
-deathrip <page URL | item ID> [-o <destination>.<"png"|"jpg">]
+deathrip <page URL | item ID> [-v] [-o <destination>.<"png"|"jpg">]
 ```
 
 E.g.
