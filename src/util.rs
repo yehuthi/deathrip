@@ -5,10 +5,10 @@
 pub struct StringMutTail {
 	/// The [`String`] value.
 	url: String,
-    /// The index of the tail.
-    ///
-    /// The tail is at `&url[tail_index..]`.
-    tail_index: usize,
+	/// The index of the tail.
+	///
+	/// The tail is at `&url[tail_index..]`.
+	tail_index: usize,
 }
 
 impl From<String> for StringMutTail {

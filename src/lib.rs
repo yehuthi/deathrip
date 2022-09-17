@@ -19,22 +19,22 @@ use util::StringMutTail;
 #[derive(Debug, Hash, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Input {
 	/// The base URL of the image.
-    ///
-    /// This variant is a bit niche for end-users: it is the URL one would get by going to an item
-    /// page, right-clicking on the image, copying the image link, and removing the `=` and the
-    /// parameters after it.
-    ///
-    /// For example, `https://lh5.ggpht.com/IFfrGztWa5KuIWKn2qAwASLds6reQ5IR8l8ColqH6I81oHWBITZ2I9ET`.
+	///
+	/// This variant is a bit niche for end-users: it is the URL one would get by going to an item
+	/// page, right-clicking on the image, copying the image link, and removing the `=` and the
+	/// parameters after it.
+	///
+	/// For example, `https://lh5.ggpht.com/IFfrGztWa5KuIWKn2qAwASLds6reQ5IR8l8ColqH6I81oHWBITZ2I9ET`.
 	BaseUrl(String),
 	/// The URL for the image's page.
-    ///
-    /// For example, `https://www.deadseascrolls.org.il/explore-the-archive/image/B-497904`.
+	///
+	/// For example, `https://www.deadseascrolls.org.il/explore-the-archive/image/B-497904`.
 	PageUrl(String),
 	/// The item ID of the image.
-    ///
-    /// E.g. for [this item](https://www.deadseascrolls.org.il/explore-the-archive/image/B-497904)
-    /// it is B-497904, which is specified in the page itself (top of left pane), and at the end of
-    /// the URL.
+	///
+	/// E.g. for [this item](https://www.deadseascrolls.org.il/explore-the-archive/image/B-497904)
+	/// it is B-497904, which is specified in the page itself (top of left pane), and at the end of
+	/// the URL.
 	ItemId(String),
 }
 
@@ -105,10 +105,10 @@ async fn determine_limit(
 		let mut base = StringMutTail::from(base);
 		let i = Arc::clone(&i);
 		let min_failure = Arc::clone(&min_failure);
-        let client = client.clone();
+		let client = client.clone();
 		tokio::spawn(async move {
 			loop {
-                let client = client.as_ref();
+				let client = client.as_ref();
 				let level = i.fetch_add(1, atomic::Ordering::SeqCst);
 				let response = client
 					.head(base.with_tail_int(level))
@@ -196,13 +196,13 @@ pub async fn determine_dimensions(
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
 	/// Failure trying to fetch an image or metadata.
-    #[error("HTTP error: {0}")]
+	#[error("HTTP error: {0}")]
 	HttpError(#[from] reqwest::Error),
 	/// Failure trying to decode an image.
-    #[error("image processing error: {0}")]
+	#[error("image processing error: {0}")]
 	ImageError(#[from] image::ImageError),
 	/// Failure trying to determine the image's format.
-    #[error("image format inference error: {0}")]
+	#[error("image format inference error: {0}")]
 	ImageFormatGuessError(std::io::Error),
 }
 
@@ -226,11 +226,11 @@ pub async fn rip(
 	};
 	let fetch_cell_client = Clone::clone(&client);
 	let fetch_cell = |(x, y): (usize, usize)| {
-        tracing::trace!("fetching cell ({x},{y})");
+		tracing::trace!("fetching cell ({x},{y})");
 		let client = Clone::clone(&fetch_cell_client);
 		async move {
 			let data = client
-                .as_ref()
+				.as_ref()
 				.get(format!("{}=x{}-y{}-z{}", base, x, y, zoom))
 				.send()
 				.await?
@@ -246,11 +246,11 @@ pub async fn rip(
 	};
 	let head_task = fetch_cell((0, 0));
 	let ((columns, rows), head) = tokio::try_join!(dims_task, head_task)?;
-    tracing::trace!("determined {columns} columns \u{00D7} {rows} rows");
+	tracing::trace!("determined {columns} columns \u{00D7} {rows} rows");
 	let (tile_width, tile_height) = head.dimensions();
-    let image_width = columns as u32 * tile_width;
-    let image_height = rows as u32 * tile_height;
-    tracing::trace!("cell size is {tile_width}\u{00D7}{tile_height}, total image size will be {image_width}\u{00D7}{image_height}");
+	let image_width = columns as u32 * tile_width;
+	let image_height = rows as u32 * tile_height;
+	tracing::trace!("cell size is {tile_width}\u{00D7}{tile_height}, total image size will be {image_width}\u{00D7}{image_height}");
 
 	let mut image = image::ImageBuffer::new(image_width, image_height);
 	image.copy_from(&head, 0, 0)?;
@@ -261,7 +261,7 @@ pub async fn rip(
 		let image = Arc::clone(&image);
 		async move {
 			let cell = fetch_cell((x, y)).await?;
-            tracing::trace!("fetched cell ({x},{y})");
+			tracing::trace!("fetched cell ({x},{y})");
 			image
 				.lock()
 				.await
@@ -277,11 +277,11 @@ pub async fn rip(
 
 #[derive(Debug, thiserror::Error)]
 pub enum PageError {
-    #[error("HTTP error fetching page metadata: {0}")]
+	#[error("HTTP error fetching page metadata: {0}")]
 	HttpError(#[from] reqwest::Error),
-    #[error("failed to find the base image URL in the page")]
+	#[error("failed to find the base image URL in the page")]
 	BaseNotFound,
-    #[error("failed to find the page title in the page")]
+	#[error("failed to find the page title in the page")]
 	TitleNotFound,
 }
 
