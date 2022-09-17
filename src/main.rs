@@ -4,7 +4,7 @@ use clap::Parser;
 use image::ImageOutputFormat;
 use tokio::fs;
 use tracing::{metadata::LevelFilter, Instrument};
-use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
 const DEFAULT_EXTENSION: &str = "png";
 const OUTPUT_HELP: &str = const_format::formatcp!(
