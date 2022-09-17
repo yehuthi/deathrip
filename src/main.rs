@@ -62,12 +62,12 @@ fn parse_format(format: &str) -> Result<ImageOutputFormat, &'static str> {
     }
 }
 
-fn cli_validate_zoom(zoom: &str) -> Result<usize, String> {
-	let zoom = zoom.parse::<isize>().map_err(|e| e.to_string())?;
+fn cli_validate_zoom(zoom: &str) -> Result<usize, &'static str> {
+	let zoom = zoom.parse::<isize>().map_err(|_| "zoom should be a number >= 0")?;
 	if zoom >= 0 {
 		Ok(zoom as usize)
 	} else {
-		Err(String::from("Zoom level must be >= 0"))
+		Err("Zoom level must be >= 0")
 	}
 }
 
