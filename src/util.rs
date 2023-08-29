@@ -4,7 +4,7 @@
 #[derive(Debug, Hash, Default, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct StringMutTail {
 	/// The [`String`] value.
-	url: String,
+	url:        String,
 	/// The index of the tail.
 	///
 	/// The tail is at `&url[tail_index..]`.
@@ -23,9 +23,7 @@ impl From<String> for StringMutTail {
 }
 
 impl From<&str> for StringMutTail {
-	fn from(base: &str) -> Self {
-		Self::from(base.to_string())
-	}
+	fn from(base: &str) -> Self { Self::from(base.to_string()) }
 }
 
 impl StringMutTail {

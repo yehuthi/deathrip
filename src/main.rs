@@ -1,4 +1,10 @@
-use std::{process::ExitCode, sync::Arc, time::{SystemTime, Instant}, io::{Cursor, Write, IsTerminal}, path::PathBuf};
+use std::{
+	io::{Cursor, IsTerminal, Write},
+	path::PathBuf,
+	process::ExitCode,
+	sync::Arc,
+	time::{Instant, SystemTime},
+};
 
 use clap::Parser;
 use image::ImageOutputFormat;
@@ -18,52 +24,64 @@ const OUTPUT_HELP: &str = const_format::formatcp!(
 #[clap(author, version, about)]
 struct Cli {
 	/// URL to the image page, image base, or item ID.
-	image: String,
+	image:   String,
 	/// The zoom / resolution level. Must be >= 0. Leave unspecified for maximum.
 	#[clap(short, long, parse(try_from_str=cli_validate_zoom))]
-	zoom: Option<usize>,
+	zoom:    Option<usize>,
 	/// The output file. If missing, it will be auto-generated, unless the output is piped.
 	#[clap(help = OUTPUT_HELP, short, long)]
-	output: Option<PathBuf>,
+	output:  Option<PathBuf>,
 	/// The output format. Possible options are: png | jp[e]g[<Q>] | bmp | gif | tiff | tga | ico | [open]exr | farbfeld.
 	/// The variable Q is a number within [0,100] that controls quality (higher is better).
 	#[clap(short, long, default_value = "png", parse(try_from_str = parse_format))]
-	format: ImageOutputFormat,
+	format:  ImageOutputFormat,
 	/// Verbose output. Overridden by quiet.
 	#[clap(short, long)]
 	verbose: bool,
 	/// Suppress output. Overrides verbose.
 	#[clap(short, long)]
-	quiet: bool,
+	quiet:   bool,
 }
 
 fn parse_format(format: &str) -> Result<ImageOutputFormat, &'static str> {
 	let format = format.to_ascii_lowercase();
 	match format.as_str() {
-		"png"			  => Ok(ImageOutputFormat::Png),
-		"bmp"			  => Ok(ImageOutputFormat::Bmp),
-		"gif"			  => Ok(ImageOutputFormat::Gif),
-		"ico"			  => Ok(ImageOutputFormat::Ico),
-		"farbfeld"		  => Ok(ImageOutputFormat::Farbfeld),
-		"tga"			  => Ok(ImageOutputFormat::Tga),
+		"png" => Ok(ImageOutputFormat::Png),
+		"bmp" => Ok(ImageOutputFormat::Bmp),
+		"gif" => Ok(ImageOutputFormat::Gif),
+		"ico" => Ok(ImageOutputFormat::Ico),
+		"farbfeld" => Ok(ImageOutputFormat::Farbfeld),
+		"tga" => Ok(ImageOutputFormat::Tga),
 		"exr" | "openexr" => Ok(ImageOutputFormat::OpenExr),
-		"tiff"			  => Ok(ImageOutputFormat::Tiff),
+		"tiff" => Ok(ImageOutputFormat::Tiff),
 		_ => {
-			let jpg_len = if format.starts_with("jpg") { Some(3) } else if format.starts_with("jpeg") { Some(4) } else { None };
+			let jpg_len = if format.starts_with("jpg") {
+				Some(3)
+			} else if format.starts_with("jpeg") {
+				Some(4)
+			} else {
+				None
+			};
 			if let Some(jpg_len) = jpg_len {
 				let quality = &format[jpg_len..];
 				if quality.is_empty() {
 					Ok(ImageOutputFormat::Jpeg(100))
 				} else if let Ok(quality) = quality.parse::<u8>() {
 					Ok(ImageOutputFormat::Jpeg(quality.min(100)))
-				} else { Err("couldn't parse the quality, it should be a number within [0,100]") }
-			} else { Err("unrecognized image output format") }
+				} else {
+					Err("couldn't parse the quality, it should be a number within [0,100]")
+				}
+			} else {
+				Err("unrecognized image output format")
+			}
 		}
 	}
 }
 
 fn cli_validate_zoom(zoom: &str) -> Result<usize, &'static str> {
-	let zoom = zoom.parse::<isize>().map_err(|_| "zoom should be a number >= 0")?;
+	let zoom = zoom
+		.parse::<isize>()
+		.map_err(|_| "zoom should be a number >= 0")?;
 	if zoom >= 0 {
 		Ok(zoom as usize)
 	} else {
@@ -74,24 +92,28 @@ fn cli_validate_zoom(zoom: &str) -> Result<usize, &'static str> {
 impl<'a> From<&'a Cli> for LevelFilter {
 	fn from(cli: &'a Cli) -> Self {
 		match (cli.quiet, cli.verbose) {
-			(true,	_	 ) => LevelFilter::OFF,
+			(true, _) => LevelFilter::OFF,
 			(false, false) => LevelFilter::INFO,
-			(false, true ) => LevelFilter::TRACE,
+			(false, true) => LevelFilter::TRACE,
 		}
 	}
 }
 
 async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 	let cli = Cli::parse();
-	
+
 	let verbosity = LevelFilter::from(&cli);
 	if verbosity != LevelFilter::OFF {
 		tracing_subscriber::registry()
-			.with(tracing_subscriber::fmt::layer()
-				  .with_writer(std::io::stderr)
-				  .without_time())
-			.with(tracing_subscriber::filter::Targets::new()
-				  .with_target(env!("CARGO_PKG_NAME"), verbosity))
+			.with(
+				tracing_subscriber::fmt::layer()
+					.with_writer(std::io::stderr)
+					.without_time(),
+			)
+			.with(
+				tracing_subscriber::filter::Targets::new()
+					.with_target(env!("CARGO_PKG_NAME"), verbosity),
+			)
 			.init();
 	}
 
@@ -105,7 +127,9 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 			let normalized = match input {
 				deathrip::Input::BaseUrl(url) => Ok((url, None)),
 				deathrip::Input::PageUrl(url) => Err(url),
-				deathrip::Input::ItemId(id) => Err(format!("https://www.deadseascrolls.org.il/explore-the-archive/image/{id}")),
+				deathrip::Input::ItemId(id) => Err(format!(
+					"https://www.deadseascrolls.org.il/explore-the-archive/image/{id}"
+				)),
 			};
 			match normalized {
 				Ok(base) => base,
@@ -122,15 +146,15 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 	};
 
 	let page = deathrip::Page {
-		title: out.unwrap_or_else(|| {
+		title:    out.unwrap_or_else(|| {
 			format!(
 				"{}_{}",
 				env!("CARGO_PKG_NAME"),
 				SystemTime::now()
-				.duration_since(SystemTime::UNIX_EPOCH)
-				.map(|time| time.as_millis())
-				.unwrap_or(0)
-				)
+					.duration_since(SystemTime::UNIX_EPOCH)
+					.map(|time| time.as_millis())
+					.unwrap_or(0)
+			)
 		}),
 		base_url: url,
 	};
@@ -154,14 +178,18 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 
 	let atty = std::io::stdout().is_terminal();
 	if atty {
-		let out_path = cli.output.unwrap_or_else(|| PathBuf::from(format!("{}.{DEFAULT_EXTENSION}", page.title)));
+		let out_path = cli
+			.output
+			.unwrap_or_else(|| PathBuf::from(format!("{}.{DEFAULT_EXTENSION}", page.title)));
 		tracing::info!("writing ripped image to output file {}", out_path.display());
-		if let Some(parent) = out_path.parent() { fs::create_dir_all(parent).await?; }
+		if let Some(parent) = out_path.parent() {
+			fs::create_dir_all(parent).await?;
+		}
 		let mut out_file = fs::File::create(out_path).await?.into_std().await;
 		image.write_to(&mut out_file, cli.format)?;
 	} else {
 		tracing::info!("writing ripped image to output stream");
-		let (w,h) = image.dimensions();
+		let (w, h) = image.dimensions();
 		let mut buf = Vec::with_capacity(w as usize * h as usize * 3);
 		image.write_to(&mut Cursor::new(&mut buf), cli.format)?;
 		std::io::stdout().write_all(&buf)?;
@@ -177,5 +205,7 @@ async fn main() -> ExitCode {
 	if let Err(e) = cli().await {
 		tracing::error!("{e}");
 		ExitCode::FAILURE
-	} else { ExitCode::SUCCESS }
+	} else {
+		ExitCode::SUCCESS
+	}
 }
