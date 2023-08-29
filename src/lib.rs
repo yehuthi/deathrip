@@ -1,12 +1,13 @@
 mod util;
 
 use std::{
+	convert::Infallible,
 	fmt::{self, Display},
 	io::Cursor,
 	sync::{
 		atomic::{self, AtomicUsize},
 		Arc,
-	}, convert::Infallible,
+	},
 };
 
 use image::{GenericImage, GenericImageView};
@@ -43,15 +44,13 @@ impl AsRef<str> for Input {
 		match self {
 			Input::BaseUrl(s) => s.as_str(),
 			Input::PageUrl(s) => s.as_str(),
-			Input::ItemId(s)  => s.as_str(),
+			Input::ItemId(s) => s.as_str(),
 		}
 	}
 }
 
 impl Display for Input {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		f.write_str(self.as_ref())
-	}
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.write_str(self.as_ref()) }
 }
 
 /// Attempts to infer the type of input.
@@ -287,7 +286,7 @@ pub enum PageError {
 
 #[derive(Debug, Hash, Default, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Page {
-	pub title: String,
+	pub title:    String,
 	pub base_url: String,
 }
 
@@ -307,7 +306,7 @@ impl Page {
 
 		let title = {
 			let regex =
-				regex::Regex::new(r#"<title>\s*[^-]+-\s*(?P<title>[^<]+?)\s*</title>"#).unwrap();
+				regex::Regex::new(r"<title>\s*[^-]+-\s*(?P<title>[^<]+?)\s*</title>").unwrap();
 			regex
 				.captures(&response)
 				.and_then(|captures| captures.name("title"))
