@@ -1,4 +1,4 @@
-use std::{process::ExitCode, sync::Arc, time::{SystemTime, Instant}, io::{Cursor, Write}, path::PathBuf};
+use std::{process::ExitCode, sync::Arc, time::{SystemTime, Instant}, io::{Cursor, Write, IsTerminal}, path::PathBuf};
 
 use clap::Parser;
 use image::ImageOutputFormat;
@@ -152,7 +152,7 @@ async fn cli() -> Result<(), Box<dyn std::error::Error>> {
 	let dur_rip = time_start.elapsed();
 	tracing::info!("finished ripping image in {}ms", dur_rip.as_millis());
 
-	let atty = atty::is(atty::Stream::Stdout);
+	let atty = std::io::stdout().is_terminal();
 	if atty {
 		let out_path = cli.output.unwrap_or_else(|| PathBuf::from(format!("{}.{DEFAULT_EXTENSION}", page.title)));
 		tracing::info!("writing ripped image to output file {}", out_path.display());
