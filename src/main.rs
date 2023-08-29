@@ -26,14 +26,14 @@ struct Cli {
 	/// URL to the image page, image base, or item ID.
 	image:   String,
 	/// The zoom / resolution level. Must be >= 0. Leave unspecified for maximum.
-	#[clap(short, long, parse(try_from_str=cli_validate_zoom))]
+	#[clap(short, long, value_parser = cli_validate_zoom)]
 	zoom:    Option<usize>,
 	/// The output file. If missing, it will be auto-generated, unless the output is piped.
 	#[clap(help = OUTPUT_HELP, short, long)]
 	output:  Option<PathBuf>,
 	/// The output format. Possible options are: png | jp[e]g[<Q>] | bmp | gif | tiff | tga | ico | [open]exr | farbfeld.
 	/// The variable Q is a number within [0,100] that controls quality (higher is better).
-	#[clap(short, long, default_value = "png", parse(try_from_str = parse_format))]
+	#[clap(short, long, default_value = "png", value_parser = parse_format)]
 	format:  ImageOutputFormat,
 	/// Verbose output. Overridden by quiet.
 	#[clap(short, long)]
